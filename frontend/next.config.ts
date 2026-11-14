@@ -1,0 +1,22 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  devIndicators: false,
+  transpilePackages: ["backend"],
+  experimental: {
+    staleTimes: { dynamic: 60 },
+  },
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "i.ytimg.com", pathname: "/vi/**" }],
+  },
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
+};
+
+export default nextConfig;

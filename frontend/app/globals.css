@@ -1,0 +1,770 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root,
+[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #fafafb;
+  --surface-2: #f3f3f6;
+  --line: #eaeaee;
+  --line-strong: #dadae1;
+  --text: #0b0b0f;
+  --muted: #55555f;
+  --faint: #6e6e78;
+  --accent: #7c5cff;
+  --accent-ink: #6a48f5;
+  --btn: #6a48f5;
+  --btn-hover: #5a38e8;
+  --tint: #f1edff;
+  --tint-2: #e5ddff;
+  --track: #eeeef2;
+  --lock: #a3a3ae;
+  --poster: #0b0b0f;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #0b0b0f;
+  --surface: #111117;
+  --surface-2: #18181f;
+  --line: #23232b;
+  --line-strong: #30303a;
+  --text: #ffffff;
+  --muted: #a6a6b2;
+  --faint: #868692;
+  --accent: #7c5cff;
+  --accent-ink: #a894ff;
+  --btn: #6a48f5;
+  --btn-hover: #7c5cff;
+  --tint: #1b1630;
+  --tint-2: #261e46;
+  --track: #24242c;
+  --lock: #4c4c57;
+  --poster: #050508;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-btn: var(--btn);
+  --color-btn-hover: var(--btn-hover);
+  --color-tint: var(--tint);
+  --color-tint-2: var(--tint-2);
+  --color-track: var(--track);
+  --color-lock: var(--lock);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .page-title {
+    font-size: clamp(26px, 4vw, 32px);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--bg);
+  }
+
+  .card-link {
+    transition:
+      transform 260ms var(--ease-out-soft),
+      border-color 260ms var(--ease-out-soft);
+  }
+  .card-link:hover {
+    transform: translateY(-3px);
+    border-color: var(--line-strong);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      transform 220ms var(--ease-out-soft),
+      background-color 220ms var(--ease-out-soft),
+      border-color 220ms var(--ease-out-soft),
+      color 220ms var(--ease-out-soft);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .btn-primary {
+    background: var(--btn);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: var(--btn-hover);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+  }
+  .btn-secondary:hover {
+    background: var(--surface);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    color: var(--muted);
+    padding: 0 12px;
+  }
+  .btn-ghost:hover {
+    color: var(--text);
+    background: var(--surface-2);
+  }
+
+  .btn-sm {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .chip-tint {
+    background: var(--tint);
+    color: var(--accent-ink);
+  }
+  .chip-outline {
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+  }
+
+  .filler {
+    background: var(--tint);
+    color: var(--accent-ink);
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 0 3px;
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--tint-2) 40%, var(--surface-2) 80%);
+    background-size: 240% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+}
+
+/* Progress */
+.ring-value {
+  transition: stroke-dashoffset 1s var(--ease-out-soft);
+  animation: ring-fill 1s var(--ease-out-soft) both;
+}
+.bar-fill {
+  transform-origin: left center;
+  animation: grow-x 900ms var(--ease-out-soft) both;
+}
+.fade-up {
+  animation: fade-up 300ms var(--ease-out-soft) both;
+}
+
+/* Course path */
+.node-current::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid var(--accent);
+  animation: node-pulse 1.9s ease-out infinite;
+}
+
+/* Voice chat */
+.halo {
+  transition:
+    transform 400ms var(--ease-out-soft),
+    opacity 400ms var(--ease-out-soft);
+}
+.talking .halo {
+  animation: halo 1.1s ease-in-out infinite alternate;
+}
+.celebrating .halo {
+  animation: halo 500ms ease-in-out infinite alternate;
+}
+.sleeping .halo {
+  transform: scale(0.94);
+  opacity: 0.45;
+}
+
+.status-dot {
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+.bar {
+  width: 4px;
+  height: 100%;
+  border-radius: 999px;
+  transform: scaleY(0.1);
+  transition:
+    transform 300ms ease-out,
+    background 260ms ease-out;
+}
+.listening .bar,
+.celebrating .bar {
+  background: var(--text);
+}
+.sleeping .bar {
+  background: var(--line-strong);
+}
+.talking .bar {
+  background: var(--accent);
+}
+.thinking .bar {
+  background: var(--accent);
+  opacity: 0.55;
+  animation: think 1.2s ease-in-out infinite;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+.listening .ring {
+  animation: ring 2.1s ease-out infinite;
+}
+.listening .ring:nth-child(2) {
+  animation-delay: 700ms;
+}
+.listening .ring:nth-child(3) {
+  animation-delay: 1400ms;
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: caret 1s steps(1) infinite;
+}
+
+.tile-progress {
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+/* Report unlock */
+.unlock-card {
+  animation: rise-in 500ms var(--ease-out-soft) 300ms both;
+}
+.unlock-badge {
+  background: var(--lock);
+  animation: badge-pop 450ms cubic-bezier(0.3, 1.4, 0.5, 1) 850ms both;
+}
+.unlock-shackle {
+  transform-box: fill-box;
+  transform-origin: 100% 100%;
+  animation: shackle-open 500ms cubic-bezier(0.3, 1.4, 0.5, 1) 850ms both;
+}
+.burst-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: burst 650ms ease-out 950ms both;
+}
+.unlock-copy {
+  animation: fade-up 400ms var(--ease-out-soft) 1150ms both;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-c);
+  }
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes node-pulse {
+  from {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+@keyframes halo {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1.05);
+  }
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes think {
+  0%,
+  100% {
+    transform: scaleY(0.1);
+  }
+  50% {
+    transform: scaleY(0.4);
+  }
+}
+@keyframes ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+@keyframes badge-pop {
+  0% {
+    transform: scale(1);
+    background: var(--lock);
+  }
+  50% {
+    transform: scale(1.16);
+  }
+  100% {
+    transform: scale(1);
+    background: var(--accent);
+  }
+}
+@keyframes shackle-open {
+  to {
+    transform: translateY(-2px) rotate(28deg);
+  }
+}
+@keyframes burst {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(-56px);
+  }
+}
+
+/* Coach mascot */
+.ym {
+  position: relative;
+  display: block;
+  margin: 0 auto;
+}
+.ym svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.ym-body,
+.ym-face,
+.ym-eye,
+.ym-mouth,
+.ym-dot {
+  transform-box: fill-box;
+}
+.ym-body {
+  transform-origin: 50% 100%;
+}
+.ym-face,
+.ym-eye {
+  transform-origin: 50% 50%;
+}
+.ym-mouth {
+  transform-origin: 50% 30%;
+}
+.ym-pupils {
+  transition: transform 320ms ease-out;
+}
+
+.e-open,
+.e-happy,
+.e-closed,
+.mo-smile,
+.mo-talk,
+.mo-hmm,
+.mo-grin,
+.mo-o,
+.x-dots,
+.x-zzz,
+.x-spark {
+  display: none;
+}
+.m-listening .e-open,
+.m-talking .e-open,
+.m-thinking .e-open {
+  display: inline;
+}
+.m-celebrating .e-happy {
+  display: inline;
+}
+.m-sleeping .e-closed {
+  display: inline;
+}
+.m-listening .mo-smile {
+  display: inline;
+}
+.m-talking .mo-talk {
+  display: inline;
+}
+.m-thinking .mo-hmm {
+  display: inline;
+}
+.m-celebrating .mo-grin {
+  display: inline;
+}
+.m-sleeping .mo-o {
+  display: inline;
+}
+.m-thinking .x-dots {
+  display: inline;
+}
+.m-sleeping .x-zzz {
+  display: inline;
+}
+.m-celebrating .x-spark {
+  display: inline;
+}
+
+.ym-eye {
+  animation: ymBlink 4.8s ease-in-out infinite;
+}
+.ym-eye.r {
+  animation-delay: 30ms;
+}
+
+.m-listening .ym-face {
+  animation: ymNod 1.7s ease-in-out infinite;
+}
+.m-listening .ym-body {
+  animation: ymLean 3.4s ease-in-out infinite;
+}
+
+.m-talking .ym-body {
+  animation: ymBob 520ms ease-in-out infinite alternate;
+}
+.m-talking .ym-mouth {
+  animation: ymTalk 1.1s linear infinite;
+}
+.m-talking.ym-sync .ym-mouth {
+  animation: none;
+  transition: transform 90ms ease-out;
+}
+
+.m-thinking .ym-pupils {
+  transform: translate(5px, -6px);
+}
+.m-thinking .ym-face {
+  animation: ymTilt 2.4s ease-in-out infinite;
+}
+.m-thinking .ym-dot {
+  animation: ymGlow 900ms ease-in-out infinite alternate;
+}
+.x-dots circle {
+  animation: ymThink 1.2s ease-in-out infinite;
+}
+.x-dots circle:nth-child(2) {
+  animation-delay: 200ms;
+}
+.x-dots circle:nth-child(3) {
+  animation-delay: 400ms;
+}
+
+.m-celebrating .ym-body {
+  animation: ymHop 950ms cubic-bezier(0.3, 0.7, 0.3, 1) infinite;
+}
+.x-spark g {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: ymSpark 950ms ease-out infinite;
+}
+.x-spark g:nth-child(2) {
+  animation-delay: 180ms;
+}
+.x-spark g:nth-child(3) {
+  animation-delay: 360ms;
+}
+.x-spark g:nth-child(4) {
+  animation-delay: 540ms;
+}
+.x-spark g:nth-child(5) {
+  animation-delay: 720ms;
+}
+
+.m-sleeping .ym-body {
+  animation: ymBreathe 3.6s ease-in-out infinite;
+}
+.x-zzz text {
+  transform-box: fill-box;
+  animation: ymZ 2.7s ease-out infinite;
+}
+.x-zzz text:nth-child(2) {
+  animation-delay: 900ms;
+}
+.x-zzz text:nth-child(3) {
+  animation-delay: 1800ms;
+}
+
+@keyframes ymBlink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes ymNod {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  25% {
+    transform: translateY(5px) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(0) rotate(0);
+  }
+  70% {
+    transform: translateY(3px) rotate(1deg);
+  }
+}
+@keyframes ymLean {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(-1.5deg);
+  }
+}
+@keyframes ymBob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-4px);
+  }
+}
+@keyframes ymTalk {
+  0% {
+    transform: scaleY(0.3);
+  }
+  12% {
+    transform: scaleY(1);
+  }
+  24% {
+    transform: scaleY(0.45);
+  }
+  38% {
+    transform: scaleY(0.9);
+  }
+  50% {
+    transform: scaleY(0.25);
+  }
+  64% {
+    transform: scaleY(0.8);
+  }
+  78% {
+    transform: scaleY(0.4);
+  }
+  90% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0.3);
+  }
+}
+@keyframes ymTilt {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes ymGlow {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ymThink {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+@keyframes ymHop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(0) scale(1.07, 0.93);
+  }
+  45% {
+    transform: translateY(-18px) scale(0.97, 1.04);
+  }
+  72% {
+    transform: translateY(0) scale(1.04, 0.96);
+  }
+}
+@keyframes ymSpark {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(0);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1) rotate(20deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6) rotate(45deg);
+  }
+}
+@keyframes ymBreathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.035, 0.965);
+  }
+}
+@keyframes ymZ {
+  0% {
+    opacity: 0;
+    transform: translate(0, 8px);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(14px, -22px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .unlock-badge {
+    background: var(--accent);
+  }
+  .unlock-shackle {
+    transform: translateY(-2px) rotate(28deg);
+  }
+}
