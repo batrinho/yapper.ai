@@ -7,6 +7,7 @@ import { criteriaLabels, passes } from "backend/criteria";
 import { addDays } from "backend/dates";
 import { getCourse } from "backend/queries";
 import { answerCoverage, buildReport, countFillerWords, fillerScore, overallScore, paceScore, scaleScores, speakingMinutes, transcribe } from "backend/scoring";
+import { nextSkillProfile, scaleSkills, speechSignals } from "backend/skills";
 import { localDate, safeTimeZone } from "backend/timezone";
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -97,11 +98,14 @@ export async function POST(request: Request) {
     labels,
     criteria: criteriaLabels(step, labels).join("; "),
     fillersPerMinute,
+    wpm,
+    signals: speechSignals(transcript.words),
   });
 
   const coverage = answerCoverage(transcript.words.length, step);
   const partial = scaleScores({ ...report.scores, pace: paceScore(wpm), filler: fillerScore(fillersPerMinute) }, coverage);
   const scores: Scores = { ...partial, overall: overallScore(partial) };
+  const skills = scaleSkills(report.skills, coverage);
   const passed = passes(step, labels, {
     score: scores.overall,
     parts: report.star,
@@ -122,6 +126,7 @@ export async function POST(request: Request) {
       star: report.star,
       tips: report.tips,
       improvedAnswer: report.improvedAnswer,
+      skills,
       coachLine: report.coachLine,
       transcript: transcript.text,
       fillerCount,
@@ -149,12 +154,16 @@ export async function POST(request: Request) {
   const today = localDate(safeTimeZone(form?.get("timeZone")));
   await db.update(users).set({ ...nextStreak(user, today), lastPracticeDate: today }).where(eq(users.id, user.id));
 
-  const [context] = await db.select({ notes: userContext.notes }).from(userContext).where(eq(userContext.userId, user.id));
+  const [context] = await db
+    .select({ notes: userContext.notes, skills: userContext.skills })
+    .from(userContext)
+    .where(eq(userContext.userId, user.id));
   const notes = [noteFor(step, scores, today), ...(context?.notes ?? [])].slice(0, MAX_NOTES);
+  const skillProfile = nextSkillProfile(context?.skills ?? null, skills, coverage);
   await db
     .insert(userContext)
-    .values({ userId: user.id, notes })
-    .onConflictDoUpdate({ target: userContext.userId, set: { notes, updatedAt: new Date() } });
+    .values({ userId: user.id, notes, skills: skillProfile })
+    .onConflictDoUpdate({ target: userContext.userId, set: { notes, skills: skillProfile, updatedAt: new Date() } });
 
   return Response.json({ sessionId: session.id });
 }

@@ -1,10 +1,11 @@
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import type { PartFlags, PartTexts, Scores, Step } from "./db/schema";
+import type { PartFlags, PartTexts, Scores, Skills, Step } from "./db/schema";
 import { env } from "./env";
+import { clampSkills, describeSignals, heuristicSkills, type SpeechSignals } from "./skills";
 
-type Word = { word: string; punctuated_word?: string; start: number; end: number };
+type Word = { word: string; punctuated_word?: string; start: number; end: number; confidence?: number };
 export type Transcript = { text: string; words: Word[] };
 
 const SINGLE_FILLERS = new Set(["um", "uh", "hmm", "mm", "mhmm", "uh-huh", "basically", "actually"]);
@@ -72,6 +73,7 @@ export function fillerScore(fillersPerMinute: number): number {
 export type Report = {
   star: PartFlags;
   scores: Pick<Scores, "structure" | "clarity" | "confidence">;
+  skills: Skills;
   tips: string[];
   improvedAnswer: PartTexts;
   coachLine: string;
@@ -80,6 +82,7 @@ export type Report = {
 const reportSchema = z.object({
   star: z.object({ s: z.boolean(), t: z.boolean(), a: z.boolean(), r: z.boolean() }),
   scores: z.object({ structure: z.number(), clarity: z.number(), confidence: z.number() }),
+  skills: z.object({ fluency: z.number(), pronunciation: z.number(), grammar: z.number(), vocabulary: z.number(), cohesion: z.number() }),
   tips: z.array(z.string()).length(3),
   improvedAnswer: z.object({ s: z.string(), t: z.string(), a: z.string(), r: z.string() }),
   coachLine: z.string(),
@@ -91,7 +94,16 @@ const REPORT_MODEL = "gpt-4.1-mini";
 
 const clampScore = (n: number) => Math.round(Math.min(100, Math.max(0, n)));
 
-type ReportInput = { transcript: string; coachTurns: string[]; step: Step; labels: string[]; criteria: string; fillersPerMinute: number };
+type ReportInput = {
+  transcript: string;
+  coachTurns: string[];
+  step: Step;
+  labels: string[];
+  criteria: string;
+  fillersPerMinute: number;
+  wpm: number;
+  signals: SpeechSignals;
+};
 
 function reportInstructions(labels: string[]): string {
   const partMap = PART_KEYS.map((key, i) => `${key} = ${labels[i]}`).join(", ");
@@ -99,18 +111,27 @@ function reportInstructions(labels: string[]): string {
     "You are a speaking coach scoring one spoken practice answer from a verbatim transcript that keeps filler words.",
     `The four answer parts are ${partMap}. Mark a part true only if the speaker clearly covered it.`,
     "Score structure, clarity and confidence from 0 to 100. If the answer is very short, off topic, a joke or not a real attempt at the task, score all three below 20 and say so kindly in coachLine.",
+    "Also score five speaking skills from 0 to 100, judging the speaker's language, not the content of the story:",
+    "- fluency: smooth, continuous delivery. Use the pace, filler and pause numbers given, plus restarts and broken-off sentences in the transcript.",
+    "- pronunciation: pronunciation and articulation. You cannot hear the audio, so judge it from the speech recognizer's confidence numbers and unsure words given: high confidence and few unsure words means clear articulation.",
+    "- grammar: grammar and syntax. Accuracy and variety of sentence structure; ignore filler words and normal loose spoken style.",
+    "- vocabulary: range and precision of word choice; penalize heavy repetition and vague words.",
+    "- cohesion: how ideas connect into one clear line, with linking words and a logical order.",
+    "If the answer is not a real attempt, score all five skills below 20 as well.",
     "Write exactly 3 tips, each a short title, then ' — ', then one specific sentence grounded in what they said.",
     "improvedAnswer rewrites the speaker's own story as one strong spoken sentence per part, keeping their facts.",
     "coachLine is one short, warm sentence the coach says about the answer. No markdown anywhere.",
   ].join("\n");
 }
 
-function reportRequest({ transcript, coachTurns, step, criteria }: ReportInput): string {
+function reportRequest({ transcript, coachTurns, step, criteria, fillersPerMinute, wpm, signals }: ReportInput): string {
   return [
     `Task question: ${step.taskQuestion}`,
     `Goal: ${step.practiceGoal}`,
     `Pass criteria: ${criteria}`,
     `What the coach said: ${coachTurns.join(" / ") || "nothing"}`,
+    "",
+    `Delivery measurements:\n${describeSignals(signals, wpm, fillersPerMinute)}`,
     "",
     `Speaker transcript:\n${transcript}`,
   ].join("\n");
@@ -128,7 +149,11 @@ async function llmReport(input: ReportInput): Promise<Report | null> {
   const parsed = reportSchema.safeParse(response.output_parsed);
   if (!parsed.success) return null;
   const { structure, clarity, confidence } = parsed.data.scores;
-  return { ...parsed.data, scores: { structure: clampScore(structure), clarity: clampScore(clarity), confidence: clampScore(confidence) } };
+  return {
+    ...parsed.data,
+    scores: { structure: clampScore(structure), clarity: clampScore(clarity), confidence: clampScore(confidence) },
+    skills: clampSkills(parsed.data.skills),
+  };
 }
 
 const PART_CUES: Record<string, string[]> = {
@@ -165,7 +190,7 @@ function ownSentences(transcript: string, labels: string[]): PartTexts {
   return { s: pick(labels[0], 0), t: pick(labels[1], 1), a: pick(labels[2], 2), r: pick(labels[3], 3) };
 }
 
-function heuristicReport(transcript: string, labels: string[], fillersPerMinute: number): Report {
+function heuristicReport({ transcript, labels, fillersPerMinute, wpm, signals }: ReportInput): Report {
   const lower = ` ${transcript.toLowerCase()} `;
   const flags = PART_KEYS.map((_, i) => (PART_CUES[labels[i].toLowerCase()] ?? []).some((cue) => lower.includes(cue)));
   const star = { s: flags[0], t: flags[1], a: flags[2], r: flags[3] };
@@ -194,6 +219,7 @@ function heuristicReport(transcript: string, labels: string[], fillersPerMinute:
       clarity: clampScore(90 - fillersPerMinute * 6 - lengthPenalty),
       confidence: clampScore(88 - hedges * 6 - lengthPenalty),
     },
+    skills: heuristicSkills(transcript, signals, paceScore(wpm), fillerScore(fillersPerMinute)),
     tips: tips.slice(0, 3),
     improvedAnswer,
     coachLine: tooShort
@@ -211,7 +237,7 @@ export async function buildReport(input: ReportInput): Promise<Report> {
   } catch (error) {
     console.error("LLM report failed, using heuristic report:", error instanceof Error ? error.message : error);
   }
-  return heuristicReport(input.transcript, input.labels, input.fillersPerMinute);
+  return heuristicReport(input);
 }
 
 const WORDS_PER_SECOND = 2.2;

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { courseSummary, type CourseWithSteps, type ProgressMap } from "backend/course-state";
+import type { SkillProfile as Profile } from "backend/db/schema";
 import type { SessionSummary } from "backend/queries";
 import type { Streak } from "backend/stats";
 import { CourseCard } from "@/components/CourseCard";
 import { StatCards } from "@/components/home/StatCards";
+import { SkillProfile } from "@/components/progress/SkillProfile";
 import { Page } from "@/components/ui";
 
 type Props = {
@@ -13,17 +15,22 @@ type Props = {
   sessionCount: number;
   streak: Streak;
   bestStreak: number;
+  skills: Profile | null;
 };
 
-export function ProgressView({ courses, progress, sessions, sessionCount, streak, bestStreak }: Props) {
+export function ProgressView({ courses, progress, sessions, sessionCount, streak, bestStreak, skills }: Props) {
   const finished = courses.reduce((sum, course) => sum + courseSummary(course, progress).finished, 0);
 
   return (
     <Page>
       <h1 className="page-title">Progress</h1>
-      <p className="mt-2 text-[16px] text-muted">Your streak, speaking time and filler rate, all in one place.</p>
+      <p className="mt-2 text-[16px] text-muted">Your speaking skills, streak, speaking time and filler rate, all in one place.</p>
 
-      <dl className="mt-8 grid gap-6 sm:grid-cols-3">
+      <div className="mt-8">
+        <SkillProfile profile={skills} />
+      </div>
+
+      <dl className="mt-6 grid gap-6 sm:grid-cols-3">
         {[
           { label: "Practice sessions", value: sessionCount },
           { label: "Steps finished", value: finished },

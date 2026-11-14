@@ -1,92 +1,135 @@
 # yapper.ai
 
-An AI speaking coach for storytelling, public speaking and behavioral interviews. Watch a short lesson, practice out loud with a voice coach, and get a scored report with real filler-word counts.
+An AI speaking coach for storytelling, public speaking and behavioral interviews. You watch a short lesson, practice out loud with a voice coach, and get a scored report. After every practice, your skill profile updates across five areas: Fluency, Pronunciation & Articulation, Grammar & Syntax, Vocabulary and Cohesion.
 
-Next.js (App Router) · TypeScript · Tailwind CSS · Neon Postgres + Drizzle · Deepgram Voice Agent · OpenAI (optional).
+Live demo: [yapper-ai-lilac.vercel.app](https://yapper-ai-lilac.vercel.app)
 
-## Repository layout
+## Tech stack
 
-One npm-workspaces repo with two packages:
+| Layer | What we use | Why |
+| --- | --- | --- |
+| Web app | **Next.js 16** (App Router, React 19 Server Components), **TypeScript** | Pages render on the server next to the database, so screens arrive with data already in them and almost no client JavaScript |
+| Styling | **Tailwind CSS 4**, CSS design tokens, Lucide icons | One token set gives light and dark themes and consistent spacing |
+| API | Next.js Route Handlers (`frontend/app/api`) | One codebase and one deploy; every route runs as its own serverless function |
+| Database | **Neon** serverless Postgres + **Drizzle ORM** | Typed schema and queries, autoscaling compute, pooled connections |
+| Live voice | **Deepgram Voice Agent** (`nova-3` listen, `gpt-4o-mini` think, Aura-2 voices) + `nova-2` live captions | Low-latency, two-way voice conversation in the browser |
+| Scoring | Deepgram pre-recorded `nova-2` (keeps filler words) + **OpenAI `gpt-4.1-mini`** structured output (Zod schema) | Real filler counts, pace and recognizer confidence, plus a report the code can check |
+| Hosting | **Vercel** (functions in `iad1`, the same region as the database) | Global CDN for static assets; functions scale out automatically |
 
-| Folder | What's in it |
+## Backend design
+
+### Overview
+
+```mermaid
+flowchart LR
+  B[Browser] -- pages and API --> V[Vercel edge and CDN]
+  V --> P[proxy.ts: signed-cookie check]
+  P --> RSC[Server Components]
+  P --> API[Route Handlers]
+  RSC --> DB[(Neon Postgres)]
+  API --> DB
+  API -- 60s token --> DG[Deepgram]
+  B <-- live voice and captions --> DG
+  API -- recording --> DGP[Deepgram transcription]
+  API -- transcript and signals --> OAI[OpenAI gpt-4.1-mini]
+```
+
+The repo is one npm-workspaces monorepo with two packages:
+
+- **`frontend/`** has the Next.js app: pages, UI components, API routes and the auth proxy.
+- **`backend/`** has framework-free domain logic that the app imports as `backend/...`: the database schema and queries, scoring, the skill profile, coach prompts, course state, plans and onboarding. It has no Next.js dependency, so it can move into its own service later without a rewrite.
+
+### Practice pipeline
+
+1. **Start.** `GET /api/voice/token` checks the daily quota (30 practices a day) and the plan, then mints a 60-second Deepgram token. API keys never reach the browser.
+2. **Talk.** The browser opens the Voice Agent with a coach prompt built per practice from the lesson, goal, pass criteria and what the coach remembers about the user. On the same mic stream it runs `nova-2` live transcription for captions and live filler counts.
+3. **Score.** `POST /api/practice/score` receives a 32 kbps recording, then:
+   - transcribes it with filler words kept, and measures pace, long pauses and per-word recognizer confidence;
+   - asks `gpt-4.1-mini` for one structured report: answer-structure parts, 3 delivery scores, **5 skill scores**, 3 tips, an improved answer and a coach line. The model gets the measured delivery numbers, so it scores fluency and articulation from evidence rather than guessing from text;
+   - scales scores by how much of a full answer was given, so a two-word answer can't score well;
+   - falls back to a built-in heuristic scorer if the LLM is unavailable.
+4. **Remember.** In the same request, the practice result, step progress, streak, a short coach note and the updated **skill profile** are written to Postgres. The recording itself is never stored.
+
+### Skill profile
+
+The profile is stored in `user_context.skills` and covers Fluency, Pronunciation & Articulation, Grammar & Syntax, Vocabulary and Cohesion.
+
+- Your first practice sets the baseline.
+- After that, each practice moves the profile toward its scores, weighted by how complete the answer was: a full answer moves it up to 35%, and a few words barely move it. One bad try can't erase weeks of progress, and steady practice shows up quickly.
+- The previous values are kept, so the Progress tab can show what changed.
+- The coach prompt includes the profile, so the voice coach knows your strongest and weakest skill.
+
+### Data model
+
+| Table | Holds |
 | --- | --- |
-| `frontend/` | The Next.js app: pages, components, API routes (`frontend/app/api`), login proxy, styles. This is what gets deployed. |
-| `backend/` | Server logic the frontend imports as `backend/...`: database schema and client (`src/db`), seed data with all course content, Drizzle config, queries, scoring (Deepgram transcription + OpenAI report), the coach prompt, session signing. |
+| `users` | Name, streaks, plan, onboarding state |
+| `user_context` | Onboarding answers, coach notes, skill profile: the coach's memory of you |
+| `courses`, `steps` | All course content (lessons, level checks, practices, pass criteria), editable live in the database |
+| `step_progress` | Per-user step status and best score; the current step is computed, never stored |
+| `practice_sessions` | Every scored practice: scores, skills, transcript, tips, improved answer |
+| `voice_attempts` | Started practices, for daily quotas and the free-plan limit |
 
-Run every command below from the repo root.
+### Security
 
-## Run it locally
+- Name-only demo login. Sessions are HMAC-signed, httpOnly cookies, checked on every request by `proxy.ts`.
+- Every query is scoped to the signed-in user's id.
+- Inputs are validated with Zod, and uploads are size- and duration-capped.
+- Secrets are read only on the server, and the browser only ever gets short-lived Deepgram tokens.
 
-1. Install dependencies (installs both packages):
+## UX and UI
 
-   ```bash
-   npm install
-   ```
+- **Quick start.** Log in with just your name, answer a 4-question survey, pick a coach (Yap or Jensen, each with its own voice), and you're talking in your first free chat within a minute.
+- **Feels like a real conversation.** A low-latency voice coach, an animated avatar that listens, talks and celebrates, live captions with filler words highlighted, and a live checklist of the pass criteria.
+- **Feedback you can act on.** Every report has an overall score, per-dimension bars, 3 specific tips and a stronger version of your own answer that the coach can read aloud.
+- **Progress you can see.** Animated skill bars count up after each practice, with arrows for what moved since last time, plus a streak, weekly minutes and a filler-rate trend.
+- **Guided path.** A level check opens each course, lessons unlock in order, and locked steps explain exactly what's left to pass.
+- **Polish.** Light and dark themes, skeleton loading screens on every page, responsive layouts from phone to desktop, and remembered microphone permission.
+- **Accessible.** Semantic landmarks, ARIA labels on charts and progress bars, visible keyboard focus, and full support for `prefers-reduced-motion`.
 
-2. Create `frontend/.env.local` (git-ignored) from `frontend/.env.example`:
+## Scaling plan
 
-   - `DATABASE_URL`: Neon pooled connection string.
-   - `DEEPGRAM_API_KEY`: a Deepgram key with at least the **Member** role (needed to mint short-lived browser tokens).
-   - `SESSION_SECRET`: any random 32-byte hex string, e.g. `openssl rand -hex 32`.
-   - `OPENAI_API_KEY` (optional): OpenAI (`gpt-4.1-mini`) writes the practice report. Without it, a simpler built-in scorer is used.
+### Today
 
-   The server fails at startup with a clear message naming any missing required variable. Keys are only read on the server.
+The app is already built to scale horizontally:
 
-3. Create the tables and load the courses (only needed once per database; safe to re-run):
+- **Stateless servers.** Sessions live in signed cookies and all state lives in Postgres, so any function instance can serve any request.
+- **Automatic scale-out.** Vercel runs each route as a serverless function and adds instances as traffic grows. Static assets come from the CDN.
+- **Elastic database.** Neon autoscales compute (scaling up on its own) and pools connections, so a burst of function instances doesn't exhaust Postgres.
+- **The heaviest work is outsourced.** Speech recognition, speech synthesis and LLM calls run on Deepgram and OpenAI, which scale on their side.
 
-   ```bash
-   npm run db:push
-   npm run db:seed
-   ```
+### Vertical vs horizontal scaling
 
-4. Start the app and open http://localhost:3000:
+| | Vertical (bigger machines) | Horizontal (more machines) |
+| --- | --- | --- |
+| Web and API | Not needed: functions are small and short-lived | Default: more function or container instances behind a load balancer |
+| Postgres | First lever: raise Neon's compute ceiling | Read replicas for read-heavy pages (Progress, Courses); later, shard by `user_id` |
+| Scoring workers | More CPU/RAM per worker for audio processing | A worker pool that scales with queue depth |
 
-   ```bash
-   npm run dev
-   ```
+We scale **horizontally by default** because it has no ceiling and survives single-node failures. We use **vertical scaling only for the database**, where it is the cheapest first step.
 
-Checks: `npm run build`, `npm run lint`, `npm run typecheck`.
+### Roadmap as traffic grows
 
-## Deploy on Vercel
+**Stage 1: up to ~10k monthly active users.** The current architecture.
+- Add **Redis** (Upstash or ElastiCache) for:
+  - rate limits and daily practice quotas (atomic counters instead of `COUNT(*)` queries);
+  - caching course content, which every page reads and which rarely changes;
+  - caching session-to-user lookups.
+- Add observability: structured logs, traces, and dashboards for p95 latency per route and LLM/ASR cost per practice.
 
-1. Import the GitHub repo `yapper.ai` in Vercel.
-2. **Root Directory:** `frontend`. Vercel detects Next.js and installs the whole workspace, so `backend/` is included automatically.
-3. **Environment Variables** (Production and Preview): `DATABASE_URL`, `DEEPGRAM_API_KEY`, `SESSION_SECRET`, `OPENAI_API_KEY`. Copy the values from `frontend/.env.local`.
-4. **Function region** (Settings → Functions): Washington, D.C. (`iad1`), the same region as the Neon database (us-east-1), so database queries take milliseconds.
-5. Deploy. The database is already set up; run `npm run db:push` and `npm run db:seed` locally only if you point `DATABASE_URL` at a new database.
+**Stage 2: ~10k to 100k monthly active users.**
+- **Make scoring asynchronous with Kafka.** Today the score request waits about 5 to 10 seconds for transcription and the LLM. Instead:
+  1. The API puts the recording in object storage (S3 or R2) and publishes a `practice.completed` event.
+  2. The user sees "scoring…" and the report appears when it's ready.
+  3. A worker pool consumes the events and scores them.
+  4. Separate consumers update the skill profile, streaks, analytics and notifications.
+  - This keeps traffic spikes from timing out requests, lets each consumer scale and retry on its own, and gives us a replayable event log for re-scoring and analytics.
+- **Put a load balancer in front of the API.** Vercel's edge network does this today. If the API moves to containers (ECS or Kubernetes), an AWS ALB or NGINX spreads traffic across instances, with health checks and zero-downtime deploys.
+- **Postgres read replicas** for dashboards and progress pages, and a dedicated connection pooler (PgBouncer).
+- **Provider resilience:** retries with backoff, circuit breakers, and a second LLM and ASR provider for failover. The heuristic scorer is already a built-in fallback.
 
-Practice recordings are compressed to 32 kbps, so even a 10-minute answer stays under Vercel's 4.5 MB request limit.
-
-## How it works
-
-- **Login:** name only. `POST /api/session` finds or creates the user (case-insensitive) and sets a signed, httpOnly cookie. `frontend/proxy.ts` sends visitors without a valid cookie to `/welcome`.
-- **Content:** all courses and steps live in Neon (`courses`, `steps`) and are read on every request, so editing a row shows up on reload. Source of truth for a fresh database: `backend/src/db/seed.ts`.
-- **Progress:** `step_progress` and `practice_sessions` per user. The current step is computed, never stored. A step is locked while an earlier required practice isn't passed; locked URLs redirect to the course.
-- **Voice:** `GET /api/voice/token` mints a 60-second Deepgram token (30 practices per user per day). The browser opens the Deepgram Voice Agent (`nova-3` listen, `gpt-4o-mini` think, `aura-2-thalia-en` speak) and, on the same mic audio, a `nova-2` live transcription stream with filler words on, for live subtitles and filler counts. (`nova-2` is used wherever fillers matter: in testing, `nova-3` dropped most "um"/"uh" from real mic recordings.)
-- **Coach prompt:** built per practice in `backend/src/coach-prompt.ts` from the course, lesson, goal, pass criteria, the user's name and past coach notes, then sent to Deepgram when the voice connection opens. Tune the prompt, greeting, LLM (`THINK_PROVIDER`) and voice (`SPEAK_MODEL`) there.
-- **Scoring:** `POST /api/practice/score` sends the recording to Deepgram pre-recorded `nova-2` with `filler_words=true`, counts fillers from word timings ("like" only between commas or pauses of 300 ms or more), computes pace, and asks OpenAI (`backend/src/scoring.ts`) for structure, clarity, confidence, tips and an improved answer. Scores scale with how much was actually said, so non-answers score near zero. The audio is not stored.
-- **Coach memory:** after each practice a short note (date, practice, strength, what to work on) is saved to `user_context`; the coach's next opening line refers to it.
-- **UI preferences:** theme and sidebar state stay in the browser (`localStorage`). The browser also remembers microphone permission, so practices start without asking again.
-
-## Course content
-
-| Course | Step | Video | Channel | Link |
-| --- | --- | --- | --- | --- |
-| Storytelling | Why stories beat data | Why storytelling is more trustworthy than presenting data / Karen Eber / TEDxPurdueU | TEDx Talks | [watch](https://www.youtube.com/watch?v=Ez5yS4Q5ASA) |
-| Storytelling | What makes something a story | What is a Story? / Matthew Dicks / TEDxBerkshires | TEDx Talks | [watch](https://www.youtube.com/watch?v=enzuCJNA3Qg) |
-| Storytelling | The clues to a great story | The clues to a great story / Andrew Stanton / TED | TED | [watch](https://www.youtube.com/watch?v=KxDwieKpawg) |
-| Storytelling | The science of the turn | The magical science of storytelling / David JP Phillips / TEDxStockholm | TEDx Talks | [watch](https://www.youtube.com/watch?v=Nj-hdQMa3uA) |
-| Storytelling | Seven keys to good storytelling | Seven Keys to Good Storytelling / Josh Campbell / TEDxMemphis | TEDx Talks | [watch](https://www.youtube.com/watch?v=iV0M5l5KhnE) |
-| Storytelling | Business storytelling made easy | Business Storytelling Made Easy / Kelly Parker / TEDxBalchStreet | TEDx Talks | [watch](https://www.youtube.com/watch?v=WKIZ0bicfFw) |
-| Public speaking | Make stress your friend | How to Make Stress Your Friend / Kelly McGonigal / TED | TED | [watch](https://www.youtube.com/watch?v=RcGyVTAoXEU) |
-| Public speaking | How to start a speech | How to Start a Speech That Makes People Whisper ‘Damn, that’s good.’ | Philipp Humm | [watch](https://www.youtube.com/watch?v=9HJ0AHfx7BE) |
-| Public speaking | The structure of great talks | TEDxEast - Nancy Duarte uncovers common structure of greatest communicators 11/11/2010 | TEDx Talks | [watch](https://www.youtube.com/watch?v=1nYFpuc2Umk) |
-| Public speaking | Speak so people want to listen | How to Speak So That People Want to Listen / Julian Treasure / TED | TED | [watch](https://www.youtube.com/watch?v=eIho2S0ZahI) |
-| Public speaking | Body language that connects | You are contagious / Vanessa Van Edwards / TEDxLondon | TEDx Talks | [watch](https://www.youtube.com/watch?v=cef35Fk7YD8) |
-| Public speaking | Handling Q&A sessions | Handling Q&A Sessions During a Presentation: How to Answer Questions Effectively | Think Fast Talk Smart | [watch](https://www.youtube.com/watch?v=jHIfj011QRY) |
-| Public speaking | How to end a speech with impact | How to End a Speech with Impact | Alexander Lyon Communication Coach | [watch](https://www.youtube.com/watch?v=4LZu4KQ4vZU) |
-| Behavioral interview prep | How to answer behavioral questions | THIS is How You Answer Behavioral Interview Questions / Job Interview Tips | Cass Thompson Career Advice | [watch](https://www.youtube.com/watch?v=TT-n6Xo5XX4) |
-| Behavioral interview prep | The STAR technique, decoded | STAR INTERVIEW QUESTIONS & ANSWERS! (The STAR TECHNIQUE for Behavioural Interview Questions!) | CareerVidz | [watch](https://www.youtube.com/watch?v=uQEuo7woEEk) |
-| Behavioral interview prep | Behavioral answers that stick | How to Answer Behavioral Interview Questions Sample Answers | Self Made Millennial | [watch](https://www.youtube.com/watch?v=IV30jAw7dxA) |
-| Behavioral interview prep | Handling questions you didn't prepare for | How to Answer an Interview Question you DIDN'T Prepare For | Jeff Su | [watch](https://www.youtube.com/watch?v=ZqNorUIgIe8) |
-| Behavioral interview prep | Weakness and failure questions | WHAT’S YOUR BIGGEST WEAKNESS? (11 GOOD WEAKNESSES To Use In A JOB INTERVIEW!) | CareerVidz | [watch](https://www.youtube.com/watch?v=UX_dxcjp5Gw) |
+**Stage 3: 100k+ monthly active users.**
+- **Multi-region:** edge-cached pages, regional API and worker clusters close to Deepgram and OpenAI endpoints, and Postgres replicas per region.
+- **Split services along the existing `backend/` boundaries:** content, practice and scoring, profile and progress, billing. Each gets its own scaling policy.
+- **Cost controls at scale:** cache LLM results for repeated prompts, batch non-urgent analytics, and route simple scoring to smaller models.
+- **Analytics warehouse** (ClickHouse or BigQuery) fed from Kafka, so product analytics never load the main database.

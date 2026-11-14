@@ -1,7 +1,8 @@
-import type { Profile, Step } from "./db/schema";
+import type { Profile, SkillProfile, Step } from "./db/schema";
 import type { CourseWithSteps } from "./course-state";
 import { criteriaLabels } from "./criteria";
 import { describeProfile } from "./onboarding";
+import { describeSkillProfile } from "./skills";
 
 export const THINK_PROVIDER = { type: "open_ai", model: "gpt-4o-mini" } as const;
 
@@ -15,7 +16,7 @@ export function isCoachId(value: unknown): value is CoachId {
   return typeof value === "string" && value in COACHES;
 }
 
-type UserContext = { goal: string | null; role: string | null; notes: string[]; profile: Profile | null };
+type UserContext = { goal: string | null; role: string | null; notes: string[]; profile: Profile | null; skills?: SkillProfile | null };
 
 const PROMPT = `# Role
 You are {{coach_name}}, a friendly speaking coach inside the yapper.ai app, talking with the user over voice. Right now you are running one practice from a course. You play two parts: the interviewer or audience who asks the question, and the coach who gives quick feedback.
@@ -58,9 +59,10 @@ function structureLine(labels: string[]): string {
   return `Guide the answer toward four parts: ${list}. If a part is missing, ask for it directly, like "What was the ${labels[3].toLowerCase()}?"`;
 }
 
-function contextSummary({ goal, role, notes, profile }: UserContext): string {
+function contextSummary({ goal, role, notes, profile, skills }: UserContext): string {
   const parts = [
     describeProfile(profile),
+    describeSkillProfile(skills ?? null),
     goal && `Goal: ${goal}.`,
     role && `Role: ${role}.`,
     notes.length > 0 && `Recent notes: ${notes.slice(0, 5).join(" | ")}`,

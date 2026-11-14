@@ -181,7 +181,8 @@ export function ProgressSkeleton() {
     <Loading>
       <Block className="h-9 w-44 rounded-lg" />
       <Block className="mt-3 h-5 w-96 max-w-full rounded-md" />
-      <div className="mt-8 grid gap-6 sm:grid-cols-3">
+      <Block className="mt-8 h-[420px] rounded-2xl md:h-[340px]" />
+      <div className="mt-6 grid gap-6 sm:grid-cols-3">
         <Block className="h-[112px] rounded-2xl" />
         <Block className="h-[112px] rounded-2xl" />
         <Block className="h-[112px] rounded-2xl" />

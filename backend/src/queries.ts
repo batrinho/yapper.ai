@@ -44,7 +44,7 @@ export const getSessionCount = cache(async (userId: string): Promise<number> => 
 
 export const getUserContext = cache(async (userId: string) => {
   const [row] = await db.select().from(userContext).where(eq(userContext.userId, userId));
-  return row ?? { userId, goal: null, role: null, notes: [] as string[], profile: null, updatedAt: new Date() };
+  return row ?? { userId, goal: null, role: null, notes: [] as string[], profile: null, skills: null, updatedAt: new Date() };
 });
 
 export const getPracticeSession = cache(async (userId: string, sessionId: string) => {

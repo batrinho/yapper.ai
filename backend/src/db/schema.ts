@@ -21,6 +21,11 @@ export type Criteria = { requireStructure: boolean; minSec?: number; maxSec?: nu
 export type PartFlags = { s: boolean; t: boolean; a: boolean; r: boolean };
 export type PartTexts = { s: string; t: string; a: string; r: string };
 export type Scores = { overall: number; structure: number; clarity: number; pace: number; filler: number; confidence: number };
+export const SKILL_KEYS = ["fluency", "pronunciation", "grammar", "vocabulary", "cohesion"] as const;
+export type SkillKey = (typeof SKILL_KEYS)[number];
+export type Skills = Record<SkillKey, number>;
+/** Running speaking-skill profile: moves toward each practice's skill scores. */
+export type SkillProfile = { current: Skills; previous: Skills | null; practices: number; updatedAt: string };
 
 export const courses = pgTable("courses", {
   id: text("id").primaryKey(),
@@ -76,6 +81,7 @@ export const userContext = pgTable("user_context", {
   role: text("role"),
   notes: jsonb("notes").$type<string[]>().notNull().default([]),
   profile: jsonb("profile").$type<Profile>(),
+  skills: jsonb("skills").$type<SkillProfile>(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -107,6 +113,7 @@ export const practiceSessions = pgTable("practice_sessions", {
   star: jsonb("star").$type<PartFlags>().notNull(),
   tips: jsonb("tips").$type<string[]>().notNull(),
   improvedAnswer: jsonb("improved_answer").$type<PartTexts>().notNull(),
+  skills: jsonb("skills").$type<Skills>(),
   coachLine: text("coach_line"),
   transcript: text("transcript").notNull(),
   fillerCount: integer("filler_count").notNull(),

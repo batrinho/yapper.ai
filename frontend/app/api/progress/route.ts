@@ -35,6 +35,6 @@ export async function DELETE() {
   await db.delete(stepProgress).where(eq(stepProgress.userId, user.id));
   await db.delete(practiceSessions).where(eq(practiceSessions.userId, user.id));
   await db.update(users).set({ currentStreak: 0, bestStreak: 0, lastPracticeDate: null }).where(eq(users.id, user.id));
-  await db.update(userContext).set({ notes: [], updatedAt: new Date() }).where(and(eq(userContext.userId, user.id)));
+  await db.update(userContext).set({ notes: [], skills: null, updatedAt: new Date() }).where(and(eq(userContext.userId, user.id)));
   return new Response(null, { status: 204 });
 }

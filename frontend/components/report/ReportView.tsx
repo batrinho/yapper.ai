@@ -9,6 +9,7 @@ import { missingRequirements, PART_KEYS, type LiveStats } from "backend/criteria
 import { dayKey, formatDuration } from "backend/dates";
 import { useToday } from "@/lib/hooks";
 import { countWords } from "backend/speech";
+import { SKILLS } from "backend/skills";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import { usePreferences } from "@/lib/preferences";
 import { NumberTile, Page, ProgressBar, ProgressRing } from "@/components/ui";
@@ -87,6 +88,33 @@ function ScoreCard({ course, step, session }: { course: CourseWithSteps; step: S
         <CoachAvatar state={passed ? "celebrating" : "talking"} size={140} />
         <p className="max-w-[240px] rounded-2xl bg-surface-2 px-5 py-3 text-center text-[15px] leading-snug">{bubble}</p>
       </div>
+    </section>
+  );
+}
+
+function SkillsCard({ skills }: { skills: NonNullable<Session["skills"]> }) {
+  return (
+    <section className="card p-6 sm:p-7" aria-labelledby="skills-title">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="skills-title" className="section-title">
+          Speaking skills
+        </h2>
+        <Link href="/progress" className="flex items-center gap-1 text-[14px] font-semibold text-accent-ink hover:underline">
+          Added to your progress
+          <ArrowRight size={14} aria-hidden />
+        </Link>
+      </div>
+      <ul className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+        {SKILLS.map((skill, i) => (
+          <li key={skill.key}>
+            <div className="flex items-baseline justify-between gap-3 text-[15px]">
+              <span className="font-bold">{skill.label}</span>
+              <span className="font-bold tabular-nums">{skills[skill.key]}</span>
+            </div>
+            <ProgressBar value={skills[skill.key]} delayMs={i * 90} className="mt-2" />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -282,6 +310,7 @@ export function ReportView({ course, index, session, nextOpen, passedBefore }: P
 
       <div className="mt-8 flex flex-col gap-6">
         <ScoreCard course={course} step={step} session={session} />
+        {session.skills && <SkillsCard skills={session.skills} />}
         {session.passed && nextOpen ? (
           <NextStepCard course={course} step={step} index={index} />
         ) : session.passed ? null : (
