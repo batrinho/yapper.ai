@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export type StepKind = "video" | "practice" | "final";
+export type Plan = "free" | "monthly" | "annual";
 export type Takeaway = { title: string; body: string };
 export type Criteria = { requireStructure: boolean; minSec?: number; maxSec?: number; maxFillers?: number };
 export type PartFlags = { s: boolean; t: boolean; a: boolean; r: boolean };
@@ -57,6 +58,8 @@ export const users = pgTable(
     currentStreak: integer("current_streak").notNull().default(0),
     bestStreak: integer("best_streak").notNull().default(0),
     lastPracticeDate: date("last_practice_date"),
+    plan: text("plan").$type<Plan>().notNull().default("free"),
+    planRenewsAt: timestamp("plan_renews_at", { withTimezone: true }),
   },
   (table) => [uniqueIndex("users_name_lower_idx").on(sql`lower(${table.name})`)],
 );

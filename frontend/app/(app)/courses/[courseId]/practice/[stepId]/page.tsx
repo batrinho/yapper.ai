@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser, requireUserId } from "@/lib/auth";
 import { coachSettings } from "backend/coach-prompt";
 import { lessonBefore, lessonNumber, stepHref, stepStatuses } from "backend/course-state";
-import { getAttemptCount, getCourse, getProgress, getUserContext } from "backend/queries";
+import { freePracticesLeft } from "backend/plans";
+import { getAttemptCount, getAttemptsUsed, getCourse, getProgress, getUserContext } from "backend/queries";
 import { VoiceChat } from "@/components/voice/VoiceChat";
 
 type Props = PageProps<"/courses/[courseId]/practice/[stepId]">;
@@ -16,12 +17,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PracticePage({ params }: Props) {
   const [userId, { courseId, stepId }] = await Promise.all([requireUserId(), params]);
-  const [user, course, progress, context, attempts] = await Promise.all([
+  const [user, course, progress, context, attempts, attemptsUsed] = await Promise.all([
     requireUser(),
     getCourse(courseId),
     getProgress(userId),
     getUserContext(userId),
     getAttemptCount(userId, stepId),
+    getAttemptsUsed(userId),
   ]);
   const index = course?.steps.findIndex((step) => step.id === stepId) ?? -1;
   if (!course || index === -1 || course.steps[index].kind === "video") notFound();
@@ -38,6 +40,7 @@ export default async function PracticePage({ params }: Props) {
       step={step}
       settings={settings}
       attempt={attempts + 1}
+      freeLeft={freePracticesLeft(user.plan, attemptsUsed)}
       lessonLabel={lecture ? `Lesson ${lessonNumber(course, lecture.index)}` : null}
       backHref={lecture ? stepHref(course.id, lecture.step) : `/courses/${course.id}`}
     />

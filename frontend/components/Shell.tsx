@@ -7,6 +7,7 @@ import {
   BookOpen,
   ChartNoAxesColumn,
   ChevronsLeft,
+  CreditCard,
   Flame,
   House,
   LogOut,
@@ -36,6 +37,7 @@ function navItems(practiceHref: string): NavItem[] {
     { href: practiceHref, label: "Practice", icon: Mic, isActive: isPracticePath },
     { href: "/progress", label: "Progress", icon: ChartNoAxesColumn, isActive: (p) => p.startsWith("/progress") },
     { href: "/profile", label: "Profile", icon: User, isActive: (p) => p.startsWith("/profile") },
+    { href: "/billing", label: "Billing", icon: CreditCard, isActive: (p) => p.startsWith("/billing") },
     { href: "/settings", label: "Settings", icon: Settings, isActive: (p) => p.startsWith("/settings") },
   ];
 }

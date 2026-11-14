@@ -6,12 +6,14 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import { ChevronLeft, Flag, Mic, MicOff, Pause, Play, RotateCw, Timer, WifiOff } from "lucide-react";
 import type { Step } from "backend/db/schema";
 import type { CoachSettings } from "backend/coach-prompt";
+import { FREE_PRACTICES } from "backend/plans";
 import type { CourseWithSteps } from "backend/course-state";
 import { buildCriteria } from "backend/criteria";
 import { formatClock } from "backend/dates";
 import { countFillers, countWords, wordsPerMinute } from "backend/speech";
 import type { MascotState } from "@/components/Mascot";
 import { CoachAvatar } from "@/components/CoachAvatar";
+import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { usePreferences } from "@/lib/preferences";
 import { PracticeBadge } from "@/components/ui";
 import { Captions } from "@/components/voice/Captions";
@@ -25,6 +27,7 @@ type Props = {
   step: Step;
   settings: CoachSettings;
   attempt: number;
+  freeLeft: number | null;
   lessonLabel: string | null;
   backHref: string;
 };
@@ -86,7 +89,7 @@ function useMouthSync(mascotRef: RefObject<HTMLDivElement | null>, levelRef: Ref
   }, [mascotRef, levelRef, talking]);
 }
 
-export function VoiceChat({ course, step, settings, attempt, lessonLabel, backHref }: Props) {
+export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLabel, backHref }: Props) {
   const router = useRouter();
   const labels = course.structureLabels;
   const { coach } = usePreferences();
@@ -95,6 +98,7 @@ export function VoiceChat({ course, step, settings, attempt, lessonLabel, backHr
   const [scoring, setScoring] = useState<"idle" | "busy" | "failed">("idle");
   const [savedRecording, setSavedRecording] = useState<Recording | null>(null);
   const [micAllowed, setMicAllowed] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
   useMouthSync(mascotRef, voice.agentLevelRef, voice.mood === "talking");
   useRememberedMicrophone(setMicAllowed);
 
@@ -109,6 +113,8 @@ export function VoiceChat({ course, step, settings, attempt, lessonLabel, backHr
     hasSpoken: words > 0,
   });
   const mood: MascotState = scoring === "busy" ? "thinking" : voice.mood;
+  const showPaywall = !subscribed && (freeLeft === 0 || voice.error?.kind === "paywall");
+  const cardError = voice.error?.kind === "paywall" ? null : voice.error;
   const live = voice.phase === "live";
 
   async function score(recording: Recording) {
@@ -188,7 +194,9 @@ export function VoiceChat({ course, step, settings, attempt, lessonLabel, backHr
             <p className="mt-1 max-w-md text-[16px] text-muted">{status.sub}</p>
           </div>
 
-          {voice.phase === "permission" && <PermissionCard error={voice.error} micAllowed={micAllowed} onStart={voice.start} />}
+          {voice.phase === "permission" && (
+            <PermissionCard error={cardError} micAllowed={micAllowed} freeLeft={subscribed ? null : freeLeft} onStart={voice.start} />
+          )}
           {voice.phase === "connecting" && <ConnectingSkeleton />}
 
           {live && (
@@ -236,6 +244,7 @@ export function VoiceChat({ course, step, settings, attempt, lessonLabel, backHr
           live={live}
         />
       </div>
+      {showPaywall && <PaywallDialog backHref={backHref} onSubscribed={() => setSubscribed(true)} />}
     </div>
   );
 }
@@ -312,9 +321,14 @@ function Notice({ message, children }: { message: string; children: ReactNode })
   );
 }
 
-type PermissionCardProps = { error: { kind: string; message: string } | null; micAllowed: boolean; onStart: () => void };
+type PermissionCardProps = {
+  error: { kind: string; message: string } | null;
+  micAllowed: boolean;
+  freeLeft: number | null;
+  onStart: () => void;
+};
 
-function PermissionCard({ error, micAllowed, onStart }: PermissionCardProps) {
+function PermissionCard({ error, micAllowed, freeLeft, onStart }: PermissionCardProps) {
   const denied = error?.kind === "mic-denied";
   const Icon = denied ? MicOff : Mic;
   const title = denied
@@ -343,6 +357,11 @@ function PermissionCard({ error, micAllowed, onStart }: PermissionCardProps) {
         {error ? "Try again" : micAllowed ? "Start practice" : "Allow microphone"}
       </button>
       {!error && !micAllowed && <p className="mt-3 text-[13px] text-muted">Your browser will ask next. Choose &ldquo;Allow&rdquo;. It remembers next time.</p>}
+      {freeLeft !== null && freeLeft > 0 && (
+        <p className="mt-3 text-[13px] font-semibold text-accent-ink">
+          {freeLeft} of {FREE_PRACTICES} free practices left
+        </p>
+      )}
     </div>
   );
 }

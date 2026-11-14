@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { db } from "./db/client";
-import { courses, practiceSessions, stepProgress, steps, userContext } from "./db/schema";
+import { courses, practiceSessions, stepProgress, steps, userContext, voiceAttempts } from "./db/schema";
 import type { CourseWithSteps, ProgressMap } from "./course-state";
 
 export type SessionSummary = { createdAt: string; durationSec: number; fillerCount: number };
@@ -60,5 +60,10 @@ export const getAttemptCount = cache(async (userId: string, stepId: string): Pro
     .select({ count: sql<number>`count(*)::int` })
     .from(practiceSessions)
     .where(and(eq(practiceSessions.userId, userId), eq(practiceSessions.stepId, stepId)));
+  return count;
+});
+
+export const getAttemptsUsed = cache(async (userId: string): Promise<number> => {
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voiceAttempts).where(eq(voiceAttempts.userId, userId));
   return count;
 });

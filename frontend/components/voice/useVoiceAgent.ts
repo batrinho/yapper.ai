@@ -35,7 +35,7 @@ class Capture extends AudioWorkletProcessor {
 registerProcessor("capture", Capture);`;
 
 export type Phase = "permission" | "connecting" | "live";
-export type VoiceErrorKind = "mic-denied" | "token" | "lost";
+export type VoiceErrorKind = "mic-denied" | "token" | "lost" | "paywall";
 export type Line = { role: "coach" | "user"; text: string };
 export type Caption = { role: "coach" | "user"; text: string } | null;
 
@@ -77,11 +77,23 @@ function rms(analyser: AnalyserNode, samples: Float32Array<ArrayBuffer>): number
   return Math.min(1, Math.sqrt(sum / samples.length) * 4);
 }
 
-async function fetchToken(): Promise<string> {
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const response = await fetch(`/api/voice/token?tz=${encodeURIComponent(timeZone)}`);
+class TokenError extends Error {
+  constructor(
+    message: string,
+    readonly paywall: boolean,
+  ) {
+    super(message);
+  }
+}
+
+async function fetchToken(reconnect = false): Promise<string> {
+  const params = new URLSearchParams({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  if (reconnect) params.set("reconnect", "1");
+  const response = await fetch(`/api/voice/token?${params}`);
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.token) throw new Error(data.error ?? "Couldn't connect to your coach. Try again.");
+  if (!response.ok || !data.token) {
+    throw new TokenError(data.error ?? "Couldn't connect to your coach. Try again.", Boolean(data.paywall));
+  }
   return data.token;
 }
 
@@ -235,7 +247,7 @@ export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSett
         stopPlayback();
         if (!s.reconnected) {
           s.reconnected = true;
-          fetchToken()
+          fetchToken(true)
             .then((fresh) => reconnectRef.current(fresh))
             .catch(() => setError({ kind: "lost", message: "Connection lost. Your answer so far is saved." }));
         } else {
@@ -328,7 +340,8 @@ export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSett
     } catch (err) {
       teardown();
       setPhase("permission");
-      setError({ kind: "token", message: err instanceof Error ? err.message : "Couldn't connect to your coach." });
+      const message = err instanceof Error ? err.message : "Couldn't connect to your coach.";
+      setError({ kind: err instanceof TokenError && err.paywall ? "paywall" : "token", message });
     }
   }, [changeMood, openSockets, sendAudio, settings.greeting, teardown]);
 
@@ -337,7 +350,7 @@ export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSett
     if (!s) return start();
     setError(null);
     try {
-      openSockets(await fetchToken(), RECONNECT_GREETING);
+      openSockets(await fetchToken(true), RECONNECT_GREETING);
     } catch (err) {
       setError({ kind: "lost", message: err instanceof Error ? err.message : "Connection lost. Your answer so far is saved." });
     }
