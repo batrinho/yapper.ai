@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mascot } from "@/components/Mascot";
+import { CoachAvatar } from "@/components/CoachAvatar";
 
 export function CoachNote({ userName, note, practiceHref }: { userName: string; note: string | null; practiceHref: string }) {
   const firstName = userName.split(" ")[0];
@@ -10,7 +10,7 @@ export function CoachNote({ userName, note, practiceHref }: { userName: string; 
   return (
     <section className="card flex flex-col bg-surface p-6 sm:p-7" aria-labelledby="coach-title">
       <div className="flex items-center gap-4">
-        <Mascot state="listening" size={64} className="!mx-0 shrink-0" />
+        <CoachAvatar state="listening" size={64} className="!mx-0 shrink-0" />
         <div>
           <p className="text-[14px] text-muted">{note ? "Your coach remembers" : "Meet your coach"}</p>
           <h2 id="coach-title" className="text-[17px] font-bold">

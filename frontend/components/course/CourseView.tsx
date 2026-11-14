@@ -13,7 +13,7 @@ import {
   type ProgressMap as Progress,
   type StepStatus,
 } from "backend/course-state";
-import { Mascot } from "@/components/Mascot";
+import { CoachAvatar } from "@/components/CoachAvatar";
 import { Page, PracticeBadge, ProgressRing } from "@/components/ui";
 
 function StepIcon({ step, size = 18 }: { step: Step; size?: number }) {
@@ -246,7 +246,7 @@ function UnlockLegend({ note }: { note: string | null }) {
         </dl>
       </section>
       <section className="card flex items-center gap-3 p-5">
-        <Mascot state="listening" size={56} className="!mx-0 shrink-0" />
+        <CoachAvatar state="listening" size={56} className="!mx-0 shrink-0" />
         <p className="text-[14px] leading-relaxed text-muted">
           &ldquo;{note ? note.split(" · ").slice(1).join(" · ") : "Finish a practice and I'll leave you a note here."}&rdquo;
         </p>

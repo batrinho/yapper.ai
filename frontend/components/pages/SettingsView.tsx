@@ -2,8 +2,52 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { CoachId } from "backend/coach-prompt";
+import { setCoach, usePreferences } from "@/lib/preferences";
 import { useTheme } from "@/lib/theme";
+import { JensenAvatar } from "@/components/JensenAvatar";
+import { Mascot } from "@/components/Mascot";
 import { Page } from "@/components/ui";
+
+const COACH_OPTIONS: { id: CoachId; name: string; detail: string; Avatar: typeof Mascot }[] = [
+  { id: "yap", name: "Yap", detail: "Purple speech bubble · warm female voice", Avatar: Mascot },
+  { id: "jensen", name: "Jensen", detail: "Glasses and a leather jacket · deep male voice", Avatar: JensenAvatar },
+];
+
+function CoachPicker() {
+  const { coach } = usePreferences();
+  return (
+    <section className="card mt-6 p-6" aria-labelledby="coach-title">
+      <h2 id="coach-title" className="text-[17px] font-bold">
+        Coach avatar
+      </h2>
+      <p className="mt-1 text-[15px] text-muted">Who coaches you in practice. Each coach has its own voice.</p>
+      <div role="radiogroup" aria-labelledby="coach-title" className="mt-4 grid gap-3 sm:grid-cols-2">
+        {COACH_OPTIONS.map(({ id, name, detail, Avatar }) => {
+          const selected = coach === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setCoach(id)}
+              className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition-colors duration-200 ${
+                selected ? "border-accent bg-tint shadow-[0_0_0_4px_var(--tint)]" : "border-line hover:border-line-strong"
+              }`}
+            >
+              <Avatar state={selected ? "celebrating" : "listening"} size={64} className="!mx-0 shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-[16px] font-bold">{name}</span>
+                <span className="block text-[14px] text-muted">{detail}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 export function SettingsView() {
   const router = useRouter();
@@ -39,6 +83,8 @@ export function SettingsView() {
           <span className={`size-6 rounded-full bg-white shadow-sm transition-transform ${dark ? "translate-x-5" : ""}`} />
         </button>
       </section>
+
+      <CoachPicker />
 
       <section className="card mt-6 p-6">
         <h2 className="text-[17px] font-bold">Reset progress</h2>

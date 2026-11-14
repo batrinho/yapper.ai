@@ -3,12 +3,21 @@ import type { CourseWithSteps } from "./course-state";
 import { criteriaLabels } from "./criteria";
 
 export const THINK_PROVIDER = { type: "open_ai", model: "gpt-4o-mini" } as const;
-export const SPEAK_MODEL = "aura-2-thalia-en";
+
+export const COACHES = {
+  yap: { name: "Yap", voice: "aura-2-thalia-en" },
+  jensen: { name: "Jensen", voice: "aura-2-zeus-en" },
+} as const;
+export type CoachId = keyof typeof COACHES;
+
+export function isCoachId(value: unknown): value is CoachId {
+  return typeof value === "string" && value in COACHES;
+}
 
 type UserContext = { goal: string | null; role: string | null; notes: string[] };
 
 const PROMPT = `# Role
-You are Yap, a friendly speaking coach inside the yapper.ai app, talking with the user over voice. Right now you are running one practice from a course. You play two parts: the interviewer or audience who asks the question, and the coach who gives quick feedback.
+You are {{coach_name}}, a friendly speaking coach inside the yapper.ai app, talking with the user over voice. Right now you are running one practice from a course. You play two parts: the interviewer or audience who asks the question, and the coach who gives quick feedback.
 
 # This practice
 - Course: {{course_title}}
@@ -36,6 +45,7 @@ Help the user give one strong spoken answer to the task question. The app has al
 - Do not use the user's name again; the greeting already did.
 - Sound like an encouraging coach, not a cheerleader. No long praise.
 - Do not use markdown formatting such as bold, italics, lists, links or code blocks. Say everything in plain spoken sentences.
+- You are a cartoon coach character in the app, not a real person. If asked who you are, say you're the yapper.ai coach.
 
 # Tools
 - Use update_progress whenever you hear a new part in the user's answer. Pass which of the four parts you have heard so far: p1 = {{p1}}, p2 = {{p2}}, p3 = {{p3}}, p4 = {{p4}}.
@@ -53,7 +63,7 @@ function contextSummary({ goal, role, notes }: UserContext): string {
 }
 
 function fill(template: string, values: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => values[key] ?? match);
 }
 
 function greeting(userName: string, step: Step, notes: string[]): string {
@@ -84,7 +94,7 @@ export function coachSettings(course: CourseWithSteps, step: Step, lessonTitle: 
 
 export type CoachSettings = ReturnType<typeof coachSettings>;
 
-export function agentSettingsMessage(settings: CoachSettings, labels: string[], inputSampleRate: number, greeting: string | null) {
+export function agentSettingsMessage(settings: CoachSettings, labels: string[], inputSampleRate: number, greeting: string | null, coach: CoachId) {
   const flags = Object.fromEntries(
     labels.map((label, i) => [`p${i + 1}`, { type: "boolean", description: `True once the user has covered the ${label}.` }]),
   );
@@ -98,7 +108,7 @@ export function agentSettingsMessage(settings: CoachSettings, labels: string[], 
       listen: { provider: { type: "deepgram", model: "nova-3", language: "en" } },
       think: {
         provider: THINK_PROVIDER,
-        prompt: settings.prompt,
+        prompt: fill(settings.prompt, { coach_name: COACHES[coach].name }),
         functions: [
           {
             name: "update_progress",
@@ -112,7 +122,7 @@ export function agentSettingsMessage(settings: CoachSettings, labels: string[], 
           },
         ],
       },
-      speak: { provider: { type: "deepgram", model: SPEAK_MODEL } },
+      speak: { provider: { type: "deepgram", model: COACHES[coach].voice } },
       ...(greeting && { greeting }),
     },
   };

@@ -1,5 +1,5 @@
 import { getCurrentUser, unauthorized } from "@/lib/auth";
-import { SPEAK_MODEL } from "backend/coach-prompt";
+import { COACHES, isCoachId } from "backend/coach-prompt";
 import { env } from "backend/env";
 
 const MAX_CHARS = 1500;
@@ -13,7 +13,9 @@ export async function POST(request: Request) {
     return Response.json({ error: `Send between 1 and ${MAX_CHARS} characters.` }, { status: 400 });
   }
 
-  const response = await fetch(`https://api.deepgram.com/v1/speak?model=${SPEAK_MODEL}`, {
+  const coach: unknown = body?.coach;
+  const voice = COACHES[isCoachId(coach) ? coach : "yap"].voice;
+  const response = await fetch(`https://api.deepgram.com/v1/speak?model=${voice}`, {
     method: "POST",
     headers: { Authorization: `Token ${env("DEEPGRAM_API_KEY")}`, "Content-Type": "application/json" },
     body: JSON.stringify({ text }),

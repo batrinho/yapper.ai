@@ -9,7 +9,8 @@ import { missingRequirements, PART_KEYS, type LiveStats } from "backend/criteria
 import { dayKey, formatDuration } from "backend/dates";
 import { useToday } from "@/lib/hooks";
 import { countWords } from "backend/speech";
-import { Mascot } from "@/components/Mascot";
+import { CoachAvatar } from "@/components/CoachAvatar";
+import { usePreferences } from "@/lib/preferences";
 import { NumberTile, Page, ProgressBar, ProgressRing } from "@/components/ui";
 import { HighlightedText } from "@/components/voice/TaskPanel";
 
@@ -81,7 +82,7 @@ function ScoreCard({ course, step, session }: { course: CourseWithSteps; step: S
       </ul>
 
       <div className="flex flex-col items-center justify-center gap-3 md:col-span-2 xl:col-span-1">
-        <Mascot state={passed ? "celebrating" : "talking"} size={140} />
+        <CoachAvatar state={passed ? "celebrating" : "talking"} size={140} />
         <p className="max-w-[240px] rounded-2xl bg-surface-2 px-5 py-3 text-center text-[15px] leading-snug">{bubble}</p>
       </div>
     </section>
@@ -184,6 +185,7 @@ function RetryCard({ course, step, index, session, passedBefore }: { course: Cou
 }
 
 function useCoachVoice() {
+  const { coach } = usePreferences();
   const [state, setState] = useState<"idle" | "loading" | "playing" | "error">("idle");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -200,7 +202,7 @@ function useCoachVoice() {
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, coach }),
       });
       if (!response.ok) throw new Error();
       const audio = new Audio(URL.createObjectURL(await response.blob()));

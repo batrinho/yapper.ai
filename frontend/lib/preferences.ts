@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from "react";
+import type { CoachId } from "backend/coach-prompt";
 
 export type Theme = "light" | "dark";
-type Preferences = { theme: Theme | null; sidebarCollapsed: boolean };
+type Preferences = { theme: Theme | null; sidebarCollapsed: boolean; coach: CoachId };
 
 export const PREFERENCES_KEY = "yapper-prefs";
-const DEFAULTS: Preferences = { theme: null, sidebarCollapsed: false };
+const DEFAULTS: Preferences = { theme: null, sidebarCollapsed: false, coach: "yap" };
 const listeners = new Set<() => void>();
 let cache: Preferences | null = null;
 
@@ -39,3 +40,4 @@ export function usePreferences(): Preferences {
 
 export const setTheme = (theme: Theme) => update({ theme });
 export const setSidebarCollapsed = (sidebarCollapsed: boolean) => update({ sidebarCollapsed });
+export const setCoach = (coach: CoachId) => update({ coach });

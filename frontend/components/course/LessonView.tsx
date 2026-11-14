@@ -6,7 +6,7 @@ import { ArrowRight, ChevronRight, CircleCheck, Lock, Mic } from "lucide-react";
 import type { Step } from "backend/db/schema";
 import { lessonNumber, stepHref, stepName, type CourseWithSteps } from "backend/course-state";
 import { criteriaLabels } from "backend/criteria";
-import { Mascot } from "@/components/Mascot";
+import { CoachAvatar } from "@/components/CoachAvatar";
 import { Avatar, initials, NumberTile, Page, PracticeBadge } from "@/components/ui";
 import { VideoPlayer } from "@/components/course/VideoPlayer";
 
@@ -31,7 +31,7 @@ function PracticeCta({ course, practice, afterIndex, onLeave }: { course: Course
   return (
     <section className="card bg-surface p-6" aria-labelledby="cta-title">
       <div className="flex items-start justify-between gap-3">
-        <Mascot state="listening" size={72} className="!mx-0" />
+        <CoachAvatar state="listening" size={72} className="!mx-0" />
         <PracticeBadge step={practice} />
       </div>
       <p className="mt-4 text-[13px] text-muted">Practice · Voice · {practice.durationMin} min</p>
@@ -75,7 +75,7 @@ function NextLessonCta({ course, nextIndex, onLeave }: { course: CourseWithSteps
   const next = course.steps[nextIndex];
   return (
     <section className="card bg-surface p-6" aria-labelledby="cta-title">
-      <Mascot state="listening" size={72} className="!mx-0" />
+      <CoachAvatar state="listening" size={72} className="!mx-0" />
       <p className="mt-4 text-[13px] text-muted">{next ? "Up next" : "Course complete"}</p>
       <h2 id="cta-title" className="mt-1 text-[22px] font-bold leading-tight tracking-[-0.02em]">
         {next ? `${stepName(course, nextIndex)} · ${next.title}` : course.title}

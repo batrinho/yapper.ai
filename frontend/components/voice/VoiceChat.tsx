@@ -10,7 +10,9 @@ import type { CourseWithSteps } from "backend/course-state";
 import { buildCriteria } from "backend/criteria";
 import { formatClock } from "backend/dates";
 import { countFillers, countWords, wordsPerMinute } from "backend/speech";
-import { Mascot, type MascotState } from "@/components/Mascot";
+import type { MascotState } from "@/components/Mascot";
+import { CoachAvatar } from "@/components/CoachAvatar";
+import { usePreferences } from "@/lib/preferences";
 import { PracticeBadge } from "@/components/ui";
 import { Captions } from "@/components/voice/Captions";
 import { FeedbackChips } from "@/components/voice/FeedbackChips";
@@ -49,21 +51,19 @@ function sessionClock(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-function useRememberedMicrophone(start: () => void, setMicAllowed: (allowed: boolean) => void) {
+function useRememberedMicrophone(setMicAllowed: (allowed: boolean) => void) {
   useEffect(() => {
     let cancelled = false;
     navigator.permissions
       ?.query({ name: "microphone" as PermissionName })
       .then((status) => {
-        if (cancelled || status.state !== "granted") return;
-        if (navigator.userActivation?.hasBeenActive) start();
-        else setMicAllowed(true);
+        if (!cancelled && status.state === "granted") setMicAllowed(true);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [start, setMicAllowed]);
+  }, [setMicAllowed]);
 }
 
 function useMouthSync(mascotRef: RefObject<HTMLDivElement | null>, levelRef: RefObject<number>, talking: boolean) {
@@ -89,13 +89,14 @@ function useMouthSync(mascotRef: RefObject<HTMLDivElement | null>, levelRef: Ref
 export function VoiceChat({ course, step, settings, attempt, lessonLabel, backHref }: Props) {
   const router = useRouter();
   const labels = course.structureLabels;
-  const voice = useVoiceAgent({ settings, labels });
+  const { coach } = usePreferences();
+  const voice = useVoiceAgent({ settings, labels, coach });
   const mascotRef = useRef<HTMLDivElement>(null);
   const [scoring, setScoring] = useState<"idle" | "busy" | "failed">("idle");
   const [savedRecording, setSavedRecording] = useState<Recording | null>(null);
   const [micAllowed, setMicAllowed] = useState(false);
   useMouthSync(mascotRef, voice.agentLevelRef, voice.mood === "talking");
-  useRememberedMicrophone(voice.start, setMicAllowed);
+  useRememberedMicrophone(setMicAllowed);
 
   const fillers = countFillers(voice.userAnswer);
   const words = countWords(voice.userAnswer);
@@ -176,7 +177,7 @@ export function VoiceChat({ course, step, settings, attempt, lessonLabel, backHr
         >
           <div className="relative grid place-items-center">
             <span aria-hidden className="halo absolute size-[248px] rounded-full bg-tint sm:size-[272px]" />
-            <Mascot ref={mascotRef} state={mood} size={230} className="relative sm:!w-[250px]" />
+            <CoachAvatar ref={mascotRef} state={mood} size={230} className="relative sm:!w-[250px]" />
           </div>
 
           <div className="text-center" aria-live="polite">
@@ -328,7 +329,7 @@ function PermissionCard({ error, micAllowed, onStart }: PermissionCardProps) {
     : error
       ? error.message
       : micAllowed
-        ? "Tap start and your coach will say hi."
+        ? "Tap start when you're ready and your coach will say hi."
         : "Your coach needs to hear you to give feedback. yapper listens only during this practice.";
 
   return (

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PartFlags } from "backend/db/schema";
-import { agentSettingsMessage, type CoachSettings } from "backend/coach-prompt";
+import { agentSettingsMessage, type CoachId, type CoachSettings } from "backend/coach-prompt";
 import { NO_PARTS } from "backend/criteria";
 import type { MascotState } from "@/components/Mascot";
 
@@ -94,7 +94,7 @@ function toParts(args: string): PartFlags {
   }
 }
 
-export function useVoiceAgent({ settings, labels }: { settings: CoachSettings; labels: string[] }) {
+export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSettings; labels: string[]; coach: CoachId }) {
   const [phase, setPhase] = useState<Phase>("permission");
   const [mood, setMood] = useState<MascotState>("listening");
   const [paused, setPaused] = useState(false);
@@ -225,7 +225,7 @@ export function useVoiceAgent({ settings, labels }: { settings: CoachSettings; l
 
       const agent = new WebSocket(AGENT_URL, ["bearer", token]);
       agent.binaryType = "arraybuffer";
-      agent.onopen = () => agent.send(JSON.stringify(agentSettingsMessage(settings, labels, sampleRate, greeting)));
+      agent.onopen = () => agent.send(JSON.stringify(agentSettingsMessage(settings, labels, sampleRate, greeting, coach)));
       agent.onmessage = (message) => {
         if (typeof message.data === "string") handleAgentEvent(JSON.parse(message.data));
         else playChunk(message.data);
@@ -259,7 +259,7 @@ export function useVoiceAgent({ settings, labels }: { settings: CoachSettings; l
       s.agent = agent;
       s.listen = listen;
     },
-    [settings, labels, handleAgentEvent, handleListenEvent, playChunk, stopPlayback],
+    [settings, labels, coach, handleAgentEvent, handleListenEvent, playChunk, stopPlayback],
   );
 
   useEffect(() => {
