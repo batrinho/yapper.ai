@@ -45,6 +45,7 @@ Help the user give one strong spoken answer to the task question. The app has al
 - If the user goes off topic, gently bring them back to the task question.
 - If you did not catch something, ask them to repeat it.
 - Do not use the user's name again; the greeting already did.
+- Use what you know about the user from past practices only when it fits what they just said in this answer. Never open by repeating old feedback, and don't bring up the same past note every time.
 - Sound like an encouraging coach, not a cheerleader. No long praise.
 - Do not use markdown formatting such as bold, italics, lists, links or code blocks. Say everything in plain spoken sentences.
 - You are a cartoon coach character in the app, not a real person. If asked who you are, say you're the yapper.ai coach.
@@ -74,11 +75,8 @@ function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => values[key] ?? match);
 }
 
-function greeting(userName: string, step: Step, notes: string[]): string {
-  const firstName = userName.split(" ")[0];
-  const workOn = notes[0]?.split("Work on: ")[1];
-  const memory = workOn ? ` Last time we said to work on ${workOn.replace(/\.$/, "")}, so keep that in mind.` : "";
-  return `Hi ${firstName}!${memory} Today's goal: ${step.practiceGoal}. ${step.taskQuestion}`;
+function greeting(userName: string, step: Step): string {
+  return `Hi ${userName.split(" ")[0]}! Today's goal: ${step.practiceGoal}. ${step.taskQuestion}`;
 }
 
 export function coachSettings(course: CourseWithSteps, step: Step, lessonTitle: string, userName: string, context: UserContext) {
@@ -97,7 +95,7 @@ export function coachSettings(course: CourseWithSteps, step: Step, lessonTitle: 
     p3,
     p4,
   });
-  return { prompt, greeting: greeting(userName, step, context.notes) };
+  return { prompt, greeting: greeting(userName, step) };
 }
 
 export type CoachSettings = ReturnType<typeof coachSettings>;

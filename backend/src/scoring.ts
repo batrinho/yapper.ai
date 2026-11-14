@@ -55,9 +55,23 @@ export function countFillerWords(words: Word[]): number {
   return count;
 }
 
+/** Gaps this long are the user listening to the coach, not part of their own speech. */
+const TURN_GAP_SEC = 2;
+
+/**
+ * Time the user actually spent talking: words plus the natural pauses between them.
+ * The recording also covers the coach's turns, so measuring first word to last word
+ * made pace look about half as fast as it really was.
+ */
 export function speakingMinutes(words: Word[]): number {
   if (words.length < 2) return 0;
-  return (words[words.length - 1].end - words[0].start) / 60;
+  let seconds = 0;
+  for (let i = 0; i < words.length; i++) {
+    seconds += Math.max(0, words[i].end - words[i].start);
+    const gap = i > 0 ? words[i].start - words[i - 1].end : 0;
+    if (gap > 0 && gap < TURN_GAP_SEC) seconds += gap;
+  }
+  return seconds / 60;
 }
 
 export function paceScore(wpm: number): number {
