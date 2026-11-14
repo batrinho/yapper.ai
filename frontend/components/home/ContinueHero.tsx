@@ -32,6 +32,16 @@ function heroContent(courses: CourseWithSteps[], progress: ProgressMap, plan: Pl
   const step = course.steps[index];
   const base = { course, percent: summary.percent, lesson: Math.max(1, lessonNumber(course, index)) };
 
+  if (step.kind === "placement") {
+    return {
+      ...base,
+      chip: "Start here",
+      title: "Find your starting level",
+      copy: "A 3-minute voice chat so your coach hears where you're starting. There's no pass mark.",
+      primary: { label: "Start level check", href: stepHref(course.id, step) },
+    };
+  }
+
   if (Object.keys(progress).length === 0) {
     return {
       ...base,

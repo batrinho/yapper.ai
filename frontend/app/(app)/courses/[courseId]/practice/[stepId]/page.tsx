@@ -44,7 +44,7 @@ export default async function PracticePage({ params }: Props) {
       step={step}
       settings={settings}
       attempt={attempts + 1}
-      freeLeft={freePracticesLeft(user.plan, attemptsUsed)}
+      freeLeft={course.steps[index].kind === "placement" ? null : freePracticesLeft(user.plan, attemptsUsed)}
       lessonLabel={lecture ? `Lesson ${lessonNumber(course, lecture.index)}` : null}
       backHref={lecture ? stepHref(course.id, lecture.step) : `/courses/${course.id}`}
     />

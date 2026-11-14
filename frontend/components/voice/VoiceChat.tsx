@@ -42,7 +42,7 @@ const MIC_HINT: Record<MascotState, string> = {
   sleeping: "Tap to resume",
 };
 
-const STATUS: Record<MascotState, { title: string; sub: string }> = {
+export const STATUS: Record<MascotState, { title: string; sub: string }> = {
   listening: { title: "Listening…", sub: "Take your time. Just talk; your coach is listening." },
   talking: { title: "Coach is talking", sub: "Jump in anytime. Speaking interrupts the coach." },
   thinking: { title: "Thinking…", sub: "Checking your structure" },
@@ -50,7 +50,7 @@ const STATUS: Record<MascotState, { title: string; sub: string }> = {
   sleeping: { title: "Paused", sub: "Breathe. Pick up right where you left off." },
 };
 
-function sessionClock(seconds: number): string {
+export function sessionClock(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
@@ -69,7 +69,7 @@ function useRememberedMicrophone(setMicAllowed: (allowed: boolean) => void) {
   }, [setMicAllowed]);
 }
 
-function useMouthSync(mascotRef: RefObject<HTMLDivElement | null>, levelRef: RefObject<number>, talking: boolean) {
+export function useMouthSync(mascotRef: RefObject<HTMLDivElement | null>, levelRef: RefObject<number>, talking: boolean) {
   useEffect(() => {
     const wrapper = mascotRef.current;
     const mouth = wrapper?.querySelector<SVGGElement>(".ym-mouth");
@@ -259,7 +259,7 @@ type ControlsProps = {
   onEnd: () => void;
 };
 
-function Controls({ mood, paused, busy, onPause, onResume, onEnd }: ControlsProps) {
+export function Controls({ mood, paused, busy, onPause, onResume, onEnd }: ControlsProps) {
   const toggle = paused ? onResume : onPause;
   return (
     <div className="mt-4 flex items-start justify-center gap-8 sm:gap-12">
@@ -322,14 +322,14 @@ function Notice({ message, children }: { message: string; children: ReactNode })
   );
 }
 
-type PermissionCardProps = {
+export type PermissionCardProps = {
   error: { kind: string; message: string } | null;
   micAllowed: boolean;
   freeLeft: number | null;
   onStart: () => void;
 };
 
-function PermissionCard({ error, micAllowed, freeLeft, onStart }: PermissionCardProps) {
+export function PermissionCard({ error, micAllowed, freeLeft, onStart }: PermissionCardProps) {
   const denied = error?.kind === "mic-denied";
   const Icon = denied ? MicOff : Mic;
   const title = denied
@@ -367,7 +367,7 @@ function PermissionCard({ error, micAllowed, freeLeft, onStart }: PermissionCard
   );
 }
 
-function ConnectingSkeleton() {
+export function ConnectingSkeleton() {
   return (
     <div className="flex w-full max-w-[490px] flex-col items-center gap-6" aria-hidden>
       <div className="shimmer h-12 w-full rounded-xl" />

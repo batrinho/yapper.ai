@@ -15,11 +15,11 @@ function normalizeName(raw: unknown): string | null {
 async function findOrCreateUser(name: string) {
   const byName = sql`lower(${users.name}) = lower(${name})`;
   const [existing] = await db.select().from(users).where(byName);
-  if (existing) return existing;
+  if (existing) return { user: existing, isNew: false };
   await db.insert(users).values({ name }).onConflictDoNothing();
   const [created] = await db.select().from(users).where(byName);
   await db.insert(userContext).values({ userId: created.id }).onConflictDoNothing();
-  return created;
+  return { user: created, isNew: true };
 }
 
 export async function POST(request: Request) {
@@ -32,9 +32,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const user = await findOrCreateUser(name);
+  const { user, isNew } = await findOrCreateUser(name);
   (await cookies()).set(SESSION_COOKIE, signSession(user.id), sessionCookieOptions);
-  return Response.json({ name: user.name });
+  return Response.json({ name: user.name, onboarding: isNew || !user.onboardedAt });
 }
 
 export async function DELETE() {

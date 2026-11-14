@@ -64,6 +64,7 @@ export function lessonBefore(course: CourseWithSteps, index: number): { step: St
 export function stepName(course: CourseWithSteps, index: number): string {
   const step = course.steps[index];
   if (step.kind === "video") return `Lesson ${lessonNumber(course, index)}`;
+  if (step.kind === "placement") return "Level check";
   return step.kind === "final" ? "Final practice" : step.title;
 }
 
@@ -73,6 +74,7 @@ export function stepHref(courseId: string, step: Step): string {
 
 export function upNextLabel(step: Step): string {
   if (step.kind === "video") return "Next lesson";
+  if (step.kind === "placement") return "Start here · Level check";
   if (step.kind === "final") return "Up next · Final practice";
   return step.required ? "Up next · Required practice" : "Up next · Optional practice";
 }
@@ -95,4 +97,18 @@ export function nextPracticeHref(courses: CourseWithSteps[], progress: ProgressM
     if (index !== -1) return stepHref(course.id, course.steps[index]);
   }
   return "/courses";
+}
+
+export type Level = "Beginner" | "Intermediate" | "Advanced";
+
+export function levelFor(score: number): Level {
+  if (score >= 75) return "Advanced";
+  if (score >= 50) return "Intermediate";
+  return "Beginner";
+}
+
+export function startingLevel(course: CourseWithSteps, progress: ProgressMap): Level | null {
+  const check = course.steps.find((step) => step.kind === "placement");
+  const score = check ? progress[check.id]?.bestScore : null;
+  return score == null ? null : levelFor(score);
 }

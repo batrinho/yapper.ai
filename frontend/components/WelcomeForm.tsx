@@ -21,7 +21,7 @@ export function WelcomeForm() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Something went wrong. Try again.");
-      router.replace("/");
+      router.replace(data.onboarding ? "/onboarding" : "/");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");

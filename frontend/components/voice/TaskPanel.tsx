@@ -78,13 +78,6 @@ type Props = {
 };
 
 export function TaskPanel({ step, labels, attempt, criteria, parts, lines: turns, speaking, live }: Props) {
-  const [open, setOpen] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns, speaking]);
-
   return (
     <aside className="flex min-w-0 flex-col gap-4">
       <section className="card p-6" aria-labelledby="task-title">
@@ -94,7 +87,10 @@ export function TaskPanel({ step, labels, attempt, criteria, parts, lines: turns
         </div>
         <p className="mt-3 text-[20px] font-bold leading-snug tracking-[-0.01em]">&ldquo;{step.taskQuestion}&rdquo;</p>
         <hr className="my-5 border-line" />
-        <h3 className="text-[13px] text-muted">To pass</h3>
+        <h3 className="text-[13px] text-muted">{criteria.length ? "To pass" : "No pass mark"}</h3>
+        {criteria.length === 0 && (
+          <p className="mt-2 text-[15px] text-muted">Just answer naturally. Your coach is listening for where you&rsquo;re starting.</p>
+        )}
         <ul className="mt-3 flex flex-col gap-3" aria-live="polite">
           {criteria.map((criterion) => (
             <CriterionRow key={criterion.id} criterion={criterion} labels={labels} parts={parts} active={live} />
@@ -102,65 +98,78 @@ export function TaskPanel({ step, labels, attempt, criteria, parts, lines: turns
         </ul>
       </section>
 
-      <section className="card flex min-h-0 flex-1 flex-col" aria-labelledby="transcript-title">
-        <div className="flex items-center justify-between border-b border-line px-6 py-4">
-          <div className="flex items-center gap-2">
-            <h2 id="transcript-title" className="text-[17px] font-bold">
-              Transcript
-            </h2>
-            {live && (
-              <span className="chip chip-tint h-[22px] px-2">
-                <span className="status-dot size-1.5 rounded-full bg-accent" aria-hidden />
-                Live
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls="transcript-body"
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[14px] text-muted hover:bg-surface-2 hover:text-text"
-          >
-            {open ? "Hide" : "Show"}
-            <ChevronDown
-              size={16}
-              className={`transition-transform duration-200 ${open ? "" : "-rotate-90"}`}
-              aria-hidden
-            />
-          </button>
-        </div>
-        {open && (
-          <div
-            id="transcript-body"
-            ref={scrollRef}
-            className="flex max-h-[420px] min-h-[160px] flex-col gap-4 overflow-y-auto px-6 py-5 text-[15px] leading-relaxed"
-          >
-            {turns.length === 0 && !speaking && (
-              <p className="text-muted">Your conversation will show up here as you talk.</p>
-            )}
-            {turns.map((turn, i) => (
-              <div key={i}>
-                <p className={`text-[13px] font-semibold ${turn.role === "coach" ? "text-accent-ink" : "text-faint"}`}>
-                  {turn.role === "coach" ? "Coach" : "You"}
-                </p>
-                <p className={turn.role === "coach" ? "" : "text-muted"}>
-                  {turn.role === "user" ? <HighlightedText text={turn.text} /> : turn.text}
-                </p>
-              </div>
-            ))}
-            {speaking && (
-              <div>
-                <p className="text-[13px] font-semibold text-faint">You · speaking</p>
-                <p>
-                  <HighlightedText text={speaking} />
-                  <span className="caret" aria-hidden />
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
+      <Transcript lines={turns} speaking={speaking} live={live} />
     </aside>
+  );
+}
+
+export function Transcript({ lines: turns, speaking, live }: { lines: Line[]; speaking: string; live: boolean }) {
+  const [open, setOpen] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [turns, speaking]);
+
+  return (
+    <section className="card flex min-h-0 flex-1 flex-col" aria-labelledby="transcript-title">
+      <div className="flex items-center justify-between border-b border-line px-6 py-4">
+        <div className="flex items-center gap-2">
+          <h2 id="transcript-title" className="text-[17px] font-bold">
+            Transcript
+          </h2>
+          {live && (
+            <span className="chip chip-tint h-[22px] px-2">
+              <span className="status-dot size-1.5 rounded-full bg-accent" aria-hidden />
+              Live
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="transcript-body"
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-[14px] text-muted hover:bg-surface-2 hover:text-text"
+        >
+          {open ? "Hide" : "Show"}
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-200 ${open ? "" : "-rotate-90"}`}
+            aria-hidden
+          />
+        </button>
+      </div>
+      {open && (
+        <div
+          id="transcript-body"
+          ref={scrollRef}
+          className="flex max-h-[420px] min-h-[160px] flex-col gap-4 overflow-y-auto px-6 py-5 text-[15px] leading-relaxed"
+        >
+          {turns.length === 0 && !speaking && (
+            <p className="text-muted">Your conversation will show up here as you talk.</p>
+          )}
+          {turns.map((turn, i) => (
+            <div key={i}>
+              <p className={`text-[13px] font-semibold ${turn.role === "coach" ? "text-accent-ink" : "text-faint"}`}>
+                {turn.role === "coach" ? "Coach" : "You"}
+              </p>
+              <p className={turn.role === "coach" ? "" : "text-muted"}>
+                {turn.role === "user" ? <HighlightedText text={turn.text} /> : turn.text}
+              </p>
+            </div>
+          ))}
+          {speaking && (
+            <div>
+              <p className="text-[13px] font-semibold text-faint">You · speaking</p>
+              <p>
+                <HighlightedText text={speaking} />
+                <span className="caret" aria-hidden />
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

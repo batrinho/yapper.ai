@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Check, ChevronRight, Clock, Flag, Lock, Mic, SkipForward, SquarePlay } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Clock, Flag, Gauge, Lock, Mic, SkipForward, SquarePlay } from "lucide-react";
 import { Fragment } from "react";
 import type { Plan, Step } from "backend/db/schema";
 import { freeStepCount, isPaid } from "backend/plans";
@@ -13,6 +13,7 @@ import {
   stepHref,
   type CourseWithSteps as Course,
   type ProgressMap as Progress,
+  startingLevel,
   type StepStatus,
 } from "backend/course-state";
 import { CoachAvatar } from "@/components/CoachAvatar";
@@ -21,16 +22,18 @@ import { Page, PracticeBadge, ProgressRing } from "@/components/ui";
 function StepIcon({ step, size = 18 }: { step: Step; size?: number }) {
   if (step.kind === "video") return <SquarePlay size={size} strokeWidth={1.75} aria-hidden />;
   if (step.kind === "final") return <Flag size={size} strokeWidth={1.75} aria-hidden />;
+  if (step.kind === "placement") return <Gauge size={size} strokeWidth={1.75} aria-hidden />;
   return <Mic size={size} strokeWidth={1.75} aria-hidden />;
 }
 
 function overline(step: Step, status: StepStatus): string {
-  return status === "current" ? `${step.overline} · Up next` : step.overline;
+  return status === "current" && step.kind !== "placement" ? `${step.overline} · Up next` : step.overline;
 }
 
 function meta(course: Course, step: Step, status: StepStatus): string {
   if (step.kind === "video") return `${step.durationMin} min`;
   if (step.kind === "final") return `Voice · ${step.durationMin} min · Completes the course`;
+  if (step.kind === "placement") return `Voice · ${step.durationMin} min · No pass mark, just shows where you start`;
   const extra = status === "current" ? ` · ${passSummary(step, course.structureLabels)}` : "";
   return `Voice · ${step.durationMin} min${extra}`;
 }
@@ -295,6 +298,7 @@ function UnlockLegend({ note }: { note: string | null }) {
 type CourseViewProps = { course: Course; progress: Progress; latestNote: string | null; plan: Plan };
 
 export function CourseView({ course, progress, latestNote, plan }: CourseViewProps) {
+  const level = startingLevel(course, progress);
   const summary = courseSummary(course, progress);
 
   return (
@@ -334,7 +338,7 @@ export function CourseView({ course, progress, latestNote, plan }: CourseViewPro
               {summary.finished} of {summary.total} steps
             </p>
             <p className="text-[14px] text-muted">
-              {summary.averageScore !== null ? `Average score ${summary.averageScore}` : "No scores yet"}
+              {level ? `Starting level: ${level}` : summary.averageScore !== null ? `Average score ${summary.averageScore}` : "Take the level check to start"}
             </p>
           </div>
         </div>

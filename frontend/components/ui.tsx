@@ -58,6 +58,7 @@ export function ProgressBar({ value, delayMs = 0, className = "" }: { value: num
 
 export function PracticeBadge({ step }: { step: Step }) {
   if (step.kind === "video") return null;
+  if (step.kind === "placement") return <span className="chip chip-tint">Level check</span>;
   if (step.required) return <span className="chip chip-tint">Required practice</span>;
   return <span className="chip chip-outline">Optional</span>;
 }

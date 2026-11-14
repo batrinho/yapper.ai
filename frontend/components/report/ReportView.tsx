@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, ChevronLeft, Lock, Play, RotateCw, Square } from "lucide-react";
 import type { PracticeSession, Step } from "backend/db/schema";
-import { lessonBefore, lessonNumber, stepHref, stepName, type CourseWithSteps } from "backend/course-state";
+import { lessonBefore, lessonNumber, levelFor, stepHref, stepName, type CourseWithSteps } from "backend/course-state";
 import { missingRequirements, PART_KEYS, type LiveStats } from "backend/criteria";
 import { dayKey, formatDuration } from "backend/dates";
 import { useToday } from "@/lib/hooks";
@@ -62,7 +62,9 @@ function ScoreCard({ course, step, session }: { course: CourseWithSteps; step: S
           </span>
         </ProgressRing>
         <span className={`chip ${passed ? "chip-tint" : "chip-outline text-text"}`}>
-          {passed ? "Passed" : "Not yet"} · needed {step.minScore ?? 70}
+          {step.kind === "placement"
+            ? `Starting level: ${levelFor(scores.overall)}`
+            : `${passed ? "Passed" : "Not yet"} · needed ${step.minScore ?? 70}`}
         </span>
       </div>
 

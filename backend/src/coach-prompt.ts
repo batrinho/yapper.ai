@@ -1,6 +1,7 @@
-import type { Step } from "./db/schema";
+import type { Profile, Step } from "./db/schema";
 import type { CourseWithSteps } from "./course-state";
 import { criteriaLabels } from "./criteria";
+import { describeProfile } from "./onboarding";
 
 export const THINK_PROVIDER = { type: "open_ai", model: "gpt-4o-mini" } as const;
 
@@ -14,7 +15,7 @@ export function isCoachId(value: unknown): value is CoachId {
   return typeof value === "string" && value in COACHES;
 }
 
-type UserContext = { goal: string | null; role: string | null; notes: string[] };
+type UserContext = { goal: string | null; role: string | null; notes: string[]; profile: Profile | null };
 
 const PROMPT = `# Role
 You are {{coach_name}}, a friendly speaking coach inside the yapper.ai app, talking with the user over voice. Right now you are running one practice from a course. You play two parts: the interviewer or audience who asks the question, and the coach who gives quick feedback.
@@ -57,8 +58,13 @@ function structureLine(labels: string[]): string {
   return `Guide the answer toward four parts: ${list}. If a part is missing, ask for it directly, like "What was the ${labels[3].toLowerCase()}?"`;
 }
 
-function contextSummary({ goal, role, notes }: UserContext): string {
-  const parts = [goal && `Goal: ${goal}.`, role && `Role: ${role}.`, notes.length > 0 && `Recent notes: ${notes.slice(0, 5).join(" | ")}`];
+function contextSummary({ goal, role, notes, profile }: UserContext): string {
+  const parts = [
+    describeProfile(profile),
+    goal && `Goal: ${goal}.`,
+    role && `Role: ${role}.`,
+    notes.length > 0 && `Recent notes: ${notes.slice(0, 5).join(" | ")}`,
+  ];
   return parts.filter(Boolean).join(" ") || "Nothing yet";
 }
 
@@ -80,7 +86,7 @@ export function coachSettings(course: CourseWithSteps, step: Step, lessonTitle: 
     lesson_title: lessonTitle,
     practice_goal: step.practiceGoal ?? "",
     task_question: step.taskQuestion ?? "",
-    pass_criteria: criteriaLabels(step, course.structureLabels).join("; "),
+    pass_criteria: step.kind === "placement" ? LEVEL_CHECK_CRITERIA : criteriaLabels(step, course.structureLabels).join("; "),
     user_name: userName,
     user_context: contextSummary(context),
     structure_line: structureLine(course.structureLabels),
@@ -93,6 +99,31 @@ export function coachSettings(course: CourseWithSteps, step: Step, lessonTitle: 
 }
 
 export type CoachSettings = ReturnType<typeof coachSettings>;
+
+const LEVEL_CHECK_CRITERIA =
+  "None. This is a level check to hear where the user is starting. Let them answer, give one light piece of feedback, ask at most one follow-up, then tell them they can tap End.";
+
+export const TRIAL_LABELS = ["Opening", "Main point", "Example", "Wrap-up"];
+
+/** Settings for the free first chat in onboarding, started from a question the user picked. */
+export function trialSettings(userName: string, context: UserContext, question: string): CoachSettings {
+  const [p1, p2, p3, p4] = TRIAL_LABELS;
+  const prompt = fill(PROMPT, {
+    course_title: "First chat",
+    lesson_title: "Getting to know you",
+    practice_goal: "a relaxed first conversation so you can hear how the user speaks",
+    task_question: question,
+    pass_criteria: "None. Keep it friendly and short: two or three exchanges, one encouraging tip, then tell them they can tap End.",
+    user_name: userName,
+    user_context: contextSummary(context),
+    structure_line: structureLine(TRIAL_LABELS),
+    p1,
+    p2,
+    p3,
+    p4,
+  });
+  return { prompt, greeting: `Hi ${userName.split(" ")[0]}! Great to meet you. Let's start easy: ${question}` };
+}
 
 export function agentSettingsMessage(settings: CoachSettings, labels: string[], inputSampleRate: number, greeting: string | null, coach: CoachId) {
   const flags = Object.fromEntries(

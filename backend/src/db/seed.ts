@@ -16,7 +16,7 @@ type VideoSeed = {
 };
 
 type PracticeSeed = {
-  kind: "practice" | "final";
+  kind: "placement" | "practice" | "final";
   id: string;
   title: string;
   durationMin: number;
@@ -42,6 +42,17 @@ const storytelling: CourseSeed = {
     "Tell stories people remember. Learn the hook, the stakes, the turn and the landing, then tell one out loud to your coach.",
   structureLabels: ["Hook", "Stakes", "Turn", "Landing"],
   steps: [
+    {
+      kind: "placement",
+      id: "st-level-check",
+      title: "Level check",
+      durationMin: 3,
+      required: false,
+      practiceGoal: "show your coach how you tell a story today",
+      taskQuestion: "Tell me about a moment that surprised you recently.",
+      minScore: 0,
+      criteria: { requireStructure: false },
+    },
     {
       kind: "video",
       id: "st-stories-beat-data",
@@ -186,6 +197,17 @@ const publicSpeaking: CourseSeed = {
   description: "Own the room from the first line. Practice openings, clear points and strong closes out loud.",
   structureLabels: ["Open", "Point", "Proof", "Close"],
   steps: [
+    {
+      kind: "placement",
+      id: "ps-level-check",
+      title: "Level check",
+      durationMin: 3,
+      required: false,
+      practiceGoal: "show your coach how you speak to a room today",
+      taskQuestion: "Imagine you're opening a talk to a room of strangers. Introduce yourself and one idea you care about.",
+      minScore: 0,
+      criteria: { requireStructure: false },
+    },
     {
       kind: "video",
       id: "ps-stress-your-friend",
@@ -336,6 +358,17 @@ const behavioral: CourseSeed = {
   structureLabels: ["Situation", "Task", "Action", "Result"],
   steps: [
     {
+      kind: "placement",
+      id: "bi-level-check",
+      title: "Level check",
+      durationMin: 3,
+      required: false,
+      practiceGoal: "show your coach how you answer interview questions today",
+      taskQuestion: "Tell me about a time you solved a hard problem at work or school.",
+      minScore: 0,
+      criteria: { requireStructure: false },
+    },
+    {
       kind: "video",
       id: "bi-answer-behavioral-questions",
       title: "How to answer behavioral questions",
@@ -462,6 +495,8 @@ const behavioral: CourseSeed = {
 
 const SEED: CourseSeed[] = [storytelling, publicSpeaking, behavioral];
 
+const OVERLINES = { placement: "Level check · Start here", practice: "Practice", final: "Final practice" };
+
 function stepRows(course: CourseSeed) {
   let lesson = 0;
   return course.steps.map((step, position) => {
@@ -473,7 +508,7 @@ function stepRows(course: CourseSeed) {
       ...step,
       courseId: course.id,
       position,
-      overline: step.kind === "final" ? "Final practice" : "Practice",
+      overline: OVERLINES[step.kind],
       minScore: step.minScore ?? 70,
     };
   });

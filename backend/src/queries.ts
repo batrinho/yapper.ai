@@ -44,7 +44,7 @@ export const getSessionCount = cache(async (userId: string): Promise<number> => 
 
 export const getUserContext = cache(async (userId: string) => {
   const [row] = await db.select().from(userContext).where(eq(userContext.userId, userId));
-  return row ?? { userId, goal: null, role: null, notes: [] as string[], updatedAt: new Date() };
+  return row ?? { userId, goal: null, role: null, notes: [] as string[], profile: null, updatedAt: new Date() };
 });
 
 export const getPracticeSession = cache(async (userId: string, sessionId: string) => {
@@ -64,6 +64,9 @@ export const getAttemptCount = cache(async (userId: string, stepId: string): Pro
 });
 
 export const getAttemptsUsed = cache(async (userId: string): Promise<number> => {
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voiceAttempts).where(eq(voiceAttempts.userId, userId));
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(voiceAttempts)
+    .where(and(eq(voiceAttempts.userId, userId), eq(voiceAttempts.kind, "practice")));
   return count;
 });

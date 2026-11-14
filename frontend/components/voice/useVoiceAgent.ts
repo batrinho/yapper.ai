@@ -86,14 +86,15 @@ class TokenError extends Error {
   }
 }
 
-type PracticeRef = { courseId: string; stepId: string };
+export type PracticeRef = { courseId: string; stepId: string } | { trial: true };
 
 async function fetchToken(practice: PracticeRef, reconnect = false): Promise<string> {
-  const params = new URLSearchParams({
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    course: practice.courseId,
-    step: practice.stepId,
-  });
+  const params = new URLSearchParams({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  if ("trial" in practice) params.set("trial", "1");
+  else {
+    params.set("course", practice.courseId);
+    params.set("step", practice.stepId);
+  }
   if (reconnect) params.set("reconnect", "1");
   const response = await fetch(`/api/voice/token?${params}`);
   const data = await response.json().catch(() => ({}));

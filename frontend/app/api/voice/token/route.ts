@@ -1,6 +1,6 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "backend/db/client";
-import { voiceAttempts } from "backend/db/schema";
+import { users, voiceAttempts, type AttemptKind, type User } from "backend/db/schema";
 import { env } from "backend/env";
 import { FREE_PRACTICES, freePracticesLeft, needsSubscription } from "backend/plans";
 import { getAttemptsUsed, getCourse } from "backend/queries";
@@ -48,6 +48,27 @@ async function grantToken(): Promise<string | null> {
   return token;
 }
 
+const paywall = (error: string) => Response.json({ error, paywall: true }, { status: 402 });
+
+/** Decides what kind of attempt this is, or why it isn't allowed. */
+async function resolveAttempt(user: User, params: URLSearchParams): Promise<AttemptKind | Response> {
+  if (params.get("trial") === "1") {
+    return user.trialUsedAt ? Response.json({ error: "You've already had your free first chat." }, { status: 403 }) : "trial";
+  }
+
+  const course = await getCourse(params.get("course") ?? "");
+  const index = course?.steps.findIndex((step) => step.id === params.get("step")) ?? -1;
+  if (!course || index === -1) return Response.json({ error: "Unknown practice." }, { status: 404 });
+  if (course.steps[index].kind === "placement") return "placement";
+  if (needsSubscription(user.plan, course.steps, index)) {
+    return paywall("This practice is part of yapper Pro. Pick a plan to unlock it.");
+  }
+  if (freePracticesLeft(user.plan, await getAttemptsUsed(user.id)) === 0) {
+    return paywall(`You've used your ${FREE_PRACTICES} free practices. Pick a plan to keep going.`);
+  }
+  return "practice";
+}
+
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
@@ -55,19 +76,11 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const isReconnect = params.get("reconnect") === "1" && (await startedRecently(user.id));
 
+  let kind: AttemptKind | null = null;
   if (!isReconnect) {
-    const course = await getCourse(params.get("course") ?? "");
-    const index = course?.steps.findIndex((step) => step.id === params.get("step")) ?? -1;
-    if (!course || index === -1) return Response.json({ error: "Unknown practice." }, { status: 404 });
-    if (needsSubscription(user.plan, course.steps, index)) {
-      return Response.json({ error: "This practice is part of yapper Pro. Pick a plan to unlock it.", paywall: true }, { status: 402 });
-    }
-    if (freePracticesLeft(user.plan, await getAttemptsUsed(user.id)) === 0) {
-      return Response.json(
-        { error: `You've used your ${FREE_PRACTICES} free practices. Pick a plan to keep going.`, paywall: true },
-        { status: 402 },
-      );
-    }
+    const attempt = await resolveAttempt(user, params);
+    if (attempt instanceof Response) return attempt;
+    kind = attempt;
     if ((await attemptsToday(user.id, safeTimeZone(params.get("tz")))) >= DAILY_LIMIT) {
       return Response.json(
         { error: `You've done ${DAILY_LIMIT} practices today. Nice work! Come back tomorrow for more.` },
@@ -79,6 +92,7 @@ export async function GET(request: Request) {
   const token = await grantToken();
   if (!token) return Response.json({ error: "Couldn't reach the voice service. Try again in a moment." }, { status: 502 });
 
-  if (!isReconnect) await db.insert(voiceAttempts).values({ userId: user.id });
+  if (kind) await db.insert(voiceAttempts).values({ userId: user.id, kind });
+  if (kind === "trial") await db.update(users).set({ trialUsedAt: new Date() }).where(eq(users.id, user.id));
   return Response.json({ token });
 }

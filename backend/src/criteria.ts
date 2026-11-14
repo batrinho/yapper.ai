@@ -29,6 +29,7 @@ function durationLabel(minSec?: number, maxSec?: number): string {
 }
 
 export function buildCriteria(step: Step, labels: string[], stats: LiveStats): Criterion[] {
+  if (step.kind === "placement") return [];
   const minScore = step.minScore ?? 70;
   const { requireStructure, minSec, maxSec, maxFillers } = step.criteria ?? { requireStructure: false };
   const criteria: Criterion[] = [
