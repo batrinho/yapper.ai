@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Plan } from "backend/db/schema";
 import type { CourseWithSteps, ProgressMap } from "backend/course-state";
 import { parseDay } from "backend/dates";
 import { useToday } from "@/lib/hooks";
@@ -20,6 +21,7 @@ type Props = {
   streak: Streak;
   latestNote: string | null;
   practiceHref: string;
+  plan: Plan;
 };
 
 function greeting(): string {
@@ -29,7 +31,7 @@ function greeting(): string {
   return "Good evening";
 }
 
-export function HomeView({ userName, courses, progress, sessions, streak, latestNote, practiceHref }: Props) {
+export function HomeView({ userName, courses, progress, sessions, streak, latestNote, practiceHref, plan }: Props) {
   const today = useToday();
   const dateLabel = today ? parseDay(today).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "";
   const weekMinutes = today ? minutesThisWeek(sessions, today).total : 0;
@@ -55,7 +57,7 @@ export function HomeView({ userName, courses, progress, sessions, streak, latest
       </header>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)]">
-        <ContinueHero courses={courses} progress={progress} />
+        <ContinueHero courses={courses} progress={progress} plan={plan} />
         <CoachNote userName={userName} note={latestNote} practiceHref={practiceHref} />
       </div>
 

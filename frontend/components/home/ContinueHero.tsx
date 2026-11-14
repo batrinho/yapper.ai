@@ -10,6 +10,8 @@ import {
   type CourseWithSteps,
   type ProgressMap,
 } from "backend/course-state";
+import type { Plan } from "backend/db/schema";
+import { needsSubscription } from "backend/plans";
 import { FrameworkTiles } from "@/components/FrameworkTiles";
 import { ProgressBar } from "@/components/ui";
 
@@ -21,7 +23,7 @@ function pickCourse(courses: CourseWithSteps[], progress: ProgressMap) {
   return open.find((course) => courseSummary(course, progress).finished > 0) ?? open[0];
 }
 
-function heroContent(courses: CourseWithSteps[], progress: ProgressMap): HeroContent | null {
+function heroContent(courses: CourseWithSteps[], progress: ProgressMap, plan: Plan): HeroContent | null {
   const course = pickCourse(courses, progress);
   if (!course) return null;
 
@@ -37,6 +39,16 @@ function heroContent(courses: CourseWithSteps[], progress: ProgressMap): HeroCon
       title: "Start your first lesson",
       copy: "Watch a short lecture, then practice out loud with your coach. It takes about ten minutes.",
       primary: { label: "Watch lesson", href: stepHref(course.id, step) },
+    };
+  }
+
+  if (needsSubscription(plan, course.steps, index)) {
+    return {
+      ...base,
+      chip: "Pro",
+      title: step.title,
+      copy: "You finished the free chapter. Unlock yapper Pro to keep going with the rest of the course.",
+      primary: { label: "Unlock with Pro", href: "/billing" },
     };
   }
 
@@ -67,8 +79,8 @@ function heroContent(courses: CourseWithSteps[], progress: ProgressMap): HeroCon
   };
 }
 
-export function ContinueHero({ courses, progress }: { courses: CourseWithSteps[]; progress: ProgressMap }) {
-  const hero = heroContent(courses, progress);
+export function ContinueHero({ courses, progress, plan }: { courses: CourseWithSteps[]; progress: ProgressMap; plan: Plan }) {
+  const hero = heroContent(courses, progress, plan);
 
   if (!hero) {
     return (

@@ -34,3 +34,17 @@ export function freePracticesLeft(plan: Plan, attemptsUsed: number): number | nu
 }
 
 export const formatPrice = (amount: number) => `$${amount.toFixed(2)}`;
+
+type StepLike = { kind: string };
+
+export const isPaid = (plan: Plan) => plan !== "free";
+
+/** Chapter 1 is the first video lesson plus the practices after it; it ends where Lesson 2 starts. */
+export function freeStepCount(steps: StepLike[]): number {
+  const secondLesson = steps.findIndex((step, i) => step.kind === "video" && steps.slice(0, i).some((s) => s.kind === "video"));
+  return secondLesson === -1 ? steps.length : secondLesson;
+}
+
+export function needsSubscription(plan: Plan, steps: StepLike[], index: number): boolean {
+  return !isPaid(plan) && index >= freeStepCount(steps);
+}

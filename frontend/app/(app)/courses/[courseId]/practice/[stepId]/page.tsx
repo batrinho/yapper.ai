@@ -3,8 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser, requireUserId } from "@/lib/auth";
 import { coachSettings } from "backend/coach-prompt";
 import { lessonBefore, lessonNumber, stepHref, stepStatuses } from "backend/course-state";
-import { freePracticesLeft } from "backend/plans";
+import { freePracticesLeft, needsSubscription } from "backend/plans";
 import { getAttemptCount, getAttemptsUsed, getCourse, getProgress, getUserContext } from "backend/queries";
+import { ProGate } from "@/components/billing/ProGate";
 import { VoiceChat } from "@/components/voice/VoiceChat";
 
 type Props = PageProps<"/courses/[courseId]/practice/[stepId]">;
@@ -28,6 +29,9 @@ export default async function PracticePage({ params }: Props) {
   const index = course?.steps.findIndex((step) => step.id === stepId) ?? -1;
   if (!course || index === -1 || course.steps[index].kind === "video") notFound();
   if (stepStatuses(course, progress)[index] === "locked") redirect(`/courses/${course.id}`);
+  if (needsSubscription(user.plan, course.steps, index)) {
+    return <ProGate title={course.steps[index].title} backHref={`/courses/${course.id}`} />;
+  }
 
   const step = course.steps[index];
   const lecture = lessonBefore(course, index);

@@ -30,7 +30,8 @@ function CurrentPlan({ plan, renewsAt, freeLeft }: Props) {
         </div>
         <ProgressBar value={(used / FREE_PRACTICES) * 100} className="mt-2" />
         <p className="mt-3 text-[14px] text-muted">
-          {freeLeft ? `${freeLeft} free practice${freeLeft === 1 ? "" : "s"} left. Lessons stay free forever.` : "You've used all free practices. Pick a plan below to keep going."}
+          Chapter 1 of every course is free, with {FREE_PRACTICES} voice practices.{" "}
+          {freeLeft ? `${freeLeft} free practice${freeLeft === 1 ? "" : "s"} left.` : "You've used them all. Pick a plan below to unlock everything."}
         </p>
       </section>
     );
@@ -87,7 +88,7 @@ export function BillingView(props: Props) {
           <h2 id="plans-title" className="section-title">
             {plan === "free" ? "Upgrade your plan" : "Change plan"}
           </h2>
-          <p className="mt-1 text-[14px] text-muted">Unlimited voice practice on either plan.</p>
+          <p className="mt-1 text-[14px] text-muted">Every chapter and unlimited voice practice on either plan.</p>
           <div className="mt-4">
             <PlanPicker selected={selected} onSelect={setSelected} current={currentPaid} />
           </div>

@@ -9,13 +9,29 @@ import { PlanPicker } from "@/components/billing/PlanPicker";
 import { usePlanCheckout } from "@/components/billing/usePlanCheckout";
 
 export const PLAN_FEATURES = [
+  "Every lesson and practice in all 3 courses",
   "Unlimited voice practice with your coach",
   "Full reports with AI feedback and a stronger version",
-  "Every course: storytelling, public speaking, interviews",
   "Your coach remembers what to work on",
 ];
 
-export function PaywallDialog({ backHref, onSubscribed }: { backHref: string; onSubscribed: () => void }) {
+const COPY = {
+  practices: {
+    eyebrow: "You're on a roll",
+    title: `You've used your ${FREE_PRACTICES} free practices`,
+    sub: "Pick a plan to keep practicing out loud with your coach.",
+  },
+  chapter: {
+    eyebrow: "Chapter 1 is free",
+    title: "Unlock the rest of the course",
+    sub: "Every lesson and practice after chapter 1 is part of yapper Pro.",
+  },
+};
+
+type Props = { reason: keyof typeof COPY; backHref: string; onSubscribed?: () => void };
+
+export function PaywallDialog({ reason, backHref, onSubscribed }: Props) {
+  const copy = COPY[reason];
   const [selected, setSelected] = useState<PaidPlan>("annual");
   const checkout = usePlanCheckout(onSubscribed);
 
@@ -30,13 +46,13 @@ export function PaywallDialog({ backHref, onSubscribed }: { backHref: string; on
         <div className="flex items-center gap-4">
           <CoachAvatar state="celebrating" size={72} className="!mx-0 shrink-0" />
           <div>
-            <p className="text-[13px] font-semibold text-accent-ink">You&rsquo;re on a roll</p>
+            <p className="text-[13px] font-semibold text-accent-ink">{copy.eyebrow}</p>
             <h2 id="paywall-title" className="text-[24px] font-bold leading-tight tracking-[-0.02em]">
-              You&rsquo;ve used your {FREE_PRACTICES} free practices
+              {copy.title}
             </h2>
           </div>
         </div>
-        <p className="mt-3 text-[15px] text-muted">Pick a plan to keep practicing out loud with your coach.</p>
+        <p className="mt-3 text-[15px] text-muted">{copy.sub}</p>
 
         <ul className="mt-5 grid gap-2 sm:grid-cols-2">
           {PLAN_FEATURES.map((feature) => (

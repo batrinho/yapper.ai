@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Check, ChevronRight, Clock, Flag, Lock, Mic, SkipForward, SquarePlay } from "lucide-react";
-import type { Step } from "backend/db/schema";
+import { Fragment } from "react";
+import type { Plan, Step } from "backend/db/schema";
+import { freeStepCount, isPaid } from "backend/plans";
 import {
   courseDuration,
   courseSummary,
@@ -77,14 +79,25 @@ function StepAction({
   status,
   progress,
   lockedHint,
+  pro,
 }: {
   course: Course;
   step: Step;
   status: StepStatus;
   progress: Progress;
   lockedHint: string;
+  pro: boolean;
 }) {
   const href = stepHref(course.id, step);
+
+  if (pro) {
+    return (
+      <Link href="/billing" className="btn btn-secondary btn-sm">
+        <Lock size={14} aria-hidden />
+        Unlock with Pro
+      </Link>
+    );
+  }
 
   if (status === "done") {
     const best = progress[step.id]?.bestScore;
@@ -138,14 +151,16 @@ function PathCard({
   status,
   progress,
   lockedHint,
+  pro,
 }: {
   course: Course;
   step: Step;
   status: StepStatus;
   progress: Progress;
   lockedHint: string;
+  pro: boolean;
 }) {
-  const locked = status === "locked";
+  const locked = status === "locked" || pro;
   const final = step.kind === "final";
   const border =
     status === "current"
@@ -172,17 +187,34 @@ function PathCard({
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-muted">
             <span>{meta(course, step, status)}</span>
             <PracticeBadge step={step} />
+            {pro && <span className="chip chip-tint">Pro</span>}
           </div>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-3 pl-[52px] sm:pl-0">
-        <StepAction course={course} step={step} status={status} progress={progress} lockedHint={lockedHint} />
+        <StepAction course={course} step={step} status={status} progress={progress} lockedHint={lockedHint} pro={pro} />
       </div>
     </div>
   );
 }
 
-function CoursePath({ course, progress }: { course: Course; progress: Progress }) {
+function ProBanner() {
+  return (
+    <li className="mb-3 ml-14 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-accent bg-tint px-5 py-4">
+      <div>
+        <p className="text-[13px] font-semibold text-accent-ink">yapper Pro</p>
+        <p className="text-[15px] font-semibold">Chapter 1 is free. Unlock the rest of the course.</p>
+      </div>
+      <Link href="/billing" className="btn btn-primary btn-sm">
+        See plans
+      </Link>
+    </li>
+  );
+}
+
+function CoursePath({ course, progress, plan }: { course: Course; progress: Progress; plan: Plan }) {
+  const freeCount = freeStepCount(course.steps);
+  const proLocked = !isPaid(plan);
   const { statuses } = courseSummary(course, progress);
   const blockerIndex = statuses.findIndex(
     (status, i) => (status === "current" || status === "available") && !isOptional(course.steps[i]),
@@ -195,28 +227,33 @@ function CoursePath({ course, progress }: { course: Course; progress: Progress }
       {course.steps.map((step, index) => {
         const status = statuses[index];
         const isLast = index === course.steps.length - 1;
+        const pro = proLocked && index >= freeCount;
         return (
-          <li key={step.id} className="relative grid grid-cols-[40px_minmax(0,1fr)] gap-4 pb-3">
-            <div className="relative flex justify-center pt-4">
-              <PathNode step={step} status={status} />
-              {!isLast && (
-                <span
-                  aria-hidden
-                  className={`absolute left-1/2 top-14 -bottom-4 w-0.5 -translate-x-1/2 ${
-                    status === "done" ? "bg-accent" : "bg-line"
-                  }`}
-                />
-              )}
-            </div>
-            <PathCard
-              course={course}
-              step={step}
-              status={status}
-              progress={progress}
-              lockedHint={lockedHint}
-            />
-            <span className="sr-only">{`Status: ${status}`}</span>
-          </li>
+          <Fragment key={step.id}>
+            {proLocked && index === freeCount && <ProBanner />}
+            <li className="relative grid grid-cols-[40px_minmax(0,1fr)] gap-4 pb-3">
+              <div className="relative flex justify-center pt-4">
+                <PathNode step={step} status={status} />
+                {!isLast && (
+                  <span
+                    aria-hidden
+                    className={`absolute left-1/2 top-14 -bottom-4 w-0.5 -translate-x-1/2 ${
+                      status === "done" ? "bg-accent" : "bg-line"
+                    }`}
+                  />
+                )}
+              </div>
+              <PathCard
+                course={course}
+                step={step}
+                status={status}
+                progress={progress}
+                lockedHint={lockedHint}
+                pro={pro}
+              />
+              <span className="sr-only">{pro ? "Status: needs Pro" : `Status: ${status}`}</span>
+            </li>
+          </Fragment>
         );
       })}
     </ol>
@@ -255,7 +292,9 @@ function UnlockLegend({ note }: { note: string | null }) {
   );
 }
 
-export function CourseView({ course, progress, latestNote }: { course: Course; progress: Progress; latestNote: string | null }) {
+type CourseViewProps = { course: Course; progress: Progress; latestNote: string | null; plan: Plan };
+
+export function CourseView({ course, progress, latestNote, plan }: CourseViewProps) {
   const summary = courseSummary(course, progress);
 
   return (
@@ -302,7 +341,7 @@ export function CourseView({ course, progress, latestNote }: { course: Course; p
       </header>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_288px]">
-        <CoursePath course={course} progress={progress} />
+        <CoursePath course={course} progress={progress} plan={plan} />
         <UnlockLegend note={latestNote} />
       </div>
     </Page>

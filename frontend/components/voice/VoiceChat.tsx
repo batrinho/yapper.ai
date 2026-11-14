@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ChevronLeft, Flag, Mic, MicOff, Pause, Play, RotateCw, Timer, WifiOff } from "lucide-react";
 import type { Step } from "backend/db/schema";
 import type { CoachSettings } from "backend/coach-prompt";
@@ -93,7 +93,8 @@ export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLab
   const router = useRouter();
   const labels = course.structureLabels;
   const { coach } = usePreferences();
-  const voice = useVoiceAgent({ settings, labels, coach });
+  const practice = useMemo(() => ({ courseId: course.id, stepId: step.id }), [course.id, step.id]);
+  const voice = useVoiceAgent({ settings, labels, coach, practice });
   const mascotRef = useRef<HTMLDivElement>(null);
   const [scoring, setScoring] = useState<"idle" | "busy" | "failed">("idle");
   const [savedRecording, setSavedRecording] = useState<Recording | null>(null);
@@ -244,7 +245,7 @@ export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLab
           live={live}
         />
       </div>
-      {showPaywall && <PaywallDialog backHref={backHref} onSubscribed={() => setSubscribed(true)} />}
+      {showPaywall && <PaywallDialog reason="practices" backHref={backHref} onSubscribed={() => setSubscribed(true)} />}
     </div>
   );
 }

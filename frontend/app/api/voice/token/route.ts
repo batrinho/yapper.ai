@@ -2,8 +2,8 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "backend/db/client";
 import { voiceAttempts } from "backend/db/schema";
 import { env } from "backend/env";
-import { FREE_PRACTICES, freePracticesLeft } from "backend/plans";
-import { getAttemptsUsed } from "backend/queries";
+import { FREE_PRACTICES, freePracticesLeft, needsSubscription } from "backend/plans";
+import { getAttemptsUsed, getCourse } from "backend/queries";
 import { safeTimeZone } from "backend/timezone";
 import { getCurrentUser, unauthorized } from "@/lib/auth";
 
@@ -56,6 +56,12 @@ export async function GET(request: Request) {
   const isReconnect = params.get("reconnect") === "1" && (await startedRecently(user.id));
 
   if (!isReconnect) {
+    const course = await getCourse(params.get("course") ?? "");
+    const index = course?.steps.findIndex((step) => step.id === params.get("step")) ?? -1;
+    if (!course || index === -1) return Response.json({ error: "Unknown practice." }, { status: 404 });
+    if (needsSubscription(user.plan, course.steps, index)) {
+      return Response.json({ error: "This practice is part of yapper Pro. Pick a plan to unlock it.", paywall: true }, { status: 402 });
+    }
     if (freePracticesLeft(user.plan, await getAttemptsUsed(user.id)) === 0) {
       return Response.json(
         { error: `You've used your ${FREE_PRACTICES} free practices. Pick a plan to keep going.`, paywall: true },

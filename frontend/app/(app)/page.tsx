@@ -22,6 +22,7 @@ export default async function HomePage() {
       streak={{ current: user.currentStreak, lastPracticeDate: user.lastPracticeDate }}
       latestNote={context.notes[0] ?? null}
       practiceHref={nextPracticeHref(courses, progress)}
+      plan={user.plan}
     />
   );
 }

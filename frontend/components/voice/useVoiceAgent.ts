@@ -86,8 +86,14 @@ class TokenError extends Error {
   }
 }
 
-async function fetchToken(reconnect = false): Promise<string> {
-  const params = new URLSearchParams({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+type PracticeRef = { courseId: string; stepId: string };
+
+async function fetchToken(practice: PracticeRef, reconnect = false): Promise<string> {
+  const params = new URLSearchParams({
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    course: practice.courseId,
+    step: practice.stepId,
+  });
   if (reconnect) params.set("reconnect", "1");
   const response = await fetch(`/api/voice/token?${params}`);
   const data = await response.json().catch(() => ({}));
@@ -106,7 +112,9 @@ function toParts(args: string): PartFlags {
   }
 }
 
-export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSettings; labels: string[]; coach: CoachId }) {
+type Options = { settings: CoachSettings; labels: string[]; coach: CoachId; practice: PracticeRef };
+
+export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
   const [phase, setPhase] = useState<Phase>("permission");
   const [mood, setMood] = useState<MascotState>("listening");
   const [paused, setPaused] = useState(false);
@@ -247,7 +255,7 @@ export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSett
         stopPlayback();
         if (!s.reconnected) {
           s.reconnected = true;
-          fetchToken(true)
+          fetchToken(practice, true)
             .then((fresh) => reconnectRef.current(fresh))
             .catch(() => setError({ kind: "lost", message: "Connection lost. Your answer so far is saved." }));
         } else {
@@ -271,7 +279,7 @@ export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSett
       s.agent = agent;
       s.listen = listen;
     },
-    [settings, labels, coach, handleAgentEvent, handleListenEvent, playChunk, stopPlayback],
+    [settings, labels, coach, practice, handleAgentEvent, handleListenEvent, playChunk, stopPlayback],
   );
 
   useEffect(() => {
@@ -336,25 +344,25 @@ export function useVoiceAgent({ settings, labels, coach }: { settings: CoachSett
     session.current = { stream, input, output, micAnalyser, agentAnalyser, recorder, chunks, agent: null, listen: null, sources: [], playhead: 0, reconnected: false, ending: false };
 
     try {
-      openSockets(await fetchToken(), settings.greeting);
+      openSockets(await fetchToken(practice), settings.greeting);
     } catch (err) {
       teardown();
       setPhase("permission");
       const message = err instanceof Error ? err.message : "Couldn't connect to your coach.";
       setError({ kind: err instanceof TokenError && err.paywall ? "paywall" : "token", message });
     }
-  }, [changeMood, openSockets, sendAudio, settings.greeting, teardown]);
+  }, [changeMood, openSockets, sendAudio, settings.greeting, teardown, practice]);
 
   const retry = useCallback(async () => {
     const s = session.current;
     if (!s) return start();
     setError(null);
     try {
-      openSockets(await fetchToken(true), RECONNECT_GREETING);
+      openSockets(await fetchToken(practice, true), RECONNECT_GREETING);
     } catch (err) {
       setError({ kind: "lost", message: err instanceof Error ? err.message : "Connection lost. Your answer so far is saved." });
     }
-  }, [openSockets, start]);
+  }, [openSockets, start, practice]);
 
   const pause = useCallback(() => {
     const s = session.current;
