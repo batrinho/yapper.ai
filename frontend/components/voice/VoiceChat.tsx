@@ -99,7 +99,6 @@ export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLab
   const [scoring, setScoring] = useState<"idle" | "busy" | "failed">("idle");
   const [savedRecording, setSavedRecording] = useState<Recording | null>(null);
   const [micAllowed, setMicAllowed] = useState(false);
-  const [subscribed, setSubscribed] = useState(false);
   useMouthSync(mascotRef, voice.agentLevelRef, voice.mood === "talking");
   useRememberedMicrophone(setMicAllowed);
 
@@ -114,7 +113,7 @@ export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLab
     hasSpoken: words > 0,
   });
   const mood: MascotState = scoring === "busy" ? "thinking" : voice.mood;
-  const showPaywall = !subscribed && (freeLeft === 0 || voice.error?.kind === "paywall");
+  const showPaywall = freeLeft === 0 || voice.error?.kind === "paywall";
   const cardError = voice.error?.kind === "paywall" ? null : voice.error;
   const live = voice.phase === "live";
 
@@ -196,7 +195,7 @@ export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLab
           </div>
 
           {voice.phase === "permission" && (
-            <PermissionCard error={cardError} micAllowed={micAllowed} freeLeft={subscribed ? null : freeLeft} onStart={voice.start} />
+            <PermissionCard error={cardError} micAllowed={micAllowed} freeLeft={freeLeft} onStart={voice.start} />
           )}
           {voice.phase === "connecting" && <ConnectingSkeleton />}
 
@@ -245,7 +244,7 @@ export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLab
           live={live}
         />
       </div>
-      {showPaywall && <PaywallDialog reason="practices" backHref={backHref} onSubscribed={() => setSubscribed(true)} />}
+      {showPaywall && <PaywallDialog reason="practices" backHref={backHref} />}
     </div>
   );
 }

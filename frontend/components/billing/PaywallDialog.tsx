@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { FREE_PRACTICES, type PaidPlan } from "backend/plans";
@@ -28,12 +29,12 @@ const COPY = {
   },
 };
 
-type Props = { reason: keyof typeof COPY; backHref: string; onSubscribed?: () => void };
+type Props = { reason: keyof typeof COPY; backHref: string };
 
-export function PaywallDialog({ reason, backHref, onSubscribed }: Props) {
+export function PaywallDialog({ reason, backHref }: Props) {
   const copy = COPY[reason];
   const [selected, setSelected] = useState<PaidPlan>("annual");
-  const checkout = usePlanCheckout(onSubscribed);
+  const checkout = usePlanCheckout(usePathname());
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">

@@ -229,6 +229,17 @@ body {
 .pop-in {
   animation: pop-in 360ms var(--ease-out-soft) both;
 }
+.confetti-piece {
+  position: absolute;
+  top: -16px;
+  width: 9px;
+  height: 14px;
+  opacity: 0;
+  animation: confetti-fall 2000ms cubic-bezier(0.25, 0.6, 0.4, 1) both;
+}
+.success-pop {
+  animation: success-pop 650ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
 
 /* Course path */
 .node-current::before {
@@ -374,6 +385,19 @@ body {
     transform: translateX(100%);
   }
 }
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), 420px) rotate(calc(var(--r) + 540deg));
+  }
+}
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -441,6 +465,19 @@ body {
   from {
     opacity: 0;
     transform: translateY(14px) scale(0.98);
+  }
+}
+@keyframes success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 @keyframes badge-pop {
