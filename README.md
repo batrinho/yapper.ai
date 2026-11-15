@@ -4,6 +4,8 @@ An AI speaking coach for the moments that matter at work: introducing yourself, 
 
 Live demo: [yapper-ai-lilac.vercel.app](https://yapper-ai-lilac.vercel.app)
 
+**At a glance:** 5 courses · AI voice coach · 5-skill progress tracking · [LTV/CAC of 3.8x in the base case, 1.7x in the worst case](#unit-economics)
+
 ## Courses
 
 The learning path has five courses. Each one starts with a level check, then 10 video lessons with voice practices between them, and ends with a final practice.
@@ -22,6 +24,142 @@ The learning path has five courses. Each one starts with a level check, then 10 
 - Every other lesson and practice needs a Monthly or Annual plan.
 
 **About the course lengths.** The lessons are public YouTube videos, each under 20 minutes, that we picked for this Business Cup demo because we don't have our own course material yet. The "10+ hours" to "20+ hours" lengths shown on each course are deliberate placeholders, not the sum of these videos. They reflect what we're aiming for: a production version would replace the YouTube lessons with 10+ hours of original material per course.
+
+## Unit economics
+
+> **LTV stays above CAC even in the worst case.** Base case **3.8x LTV/CAC**, worst case **1.7x**, best case **6.2x**, at a **≈84% gross margin**.
+
+<table>
+  <tr>
+    <th></th>
+    <th align="center">Worst</th>
+    <th align="center">Base</th>
+    <th align="center">Best</th>
+  </tr>
+  <tr>
+    <td><b>Net LTV</b></td>
+    <td align="center">$124</td>
+    <td align="center">$141.5</td>
+    <td align="center">$164</td>
+  </tr>
+  <tr>
+    <td><b>CAC</b></td>
+    <td align="center">$74</td>
+    <td align="center">$37.5</td>
+    <td align="center">$26.5</td>
+  </tr>
+  <tr>
+    <td><b>LTV / CAC</b></td>
+    <td align="center"><b>1.7x</b></td>
+    <td align="center"><b>3.8x</b></td>
+    <td align="center"><b>6.2x</b></td>
+  </tr>
+  <tr>
+    <td><b>ROMI</b></td>
+    <td align="center">67%</td>
+    <td align="center">277%</td>
+    <td align="center">520%</td>
+  </tr>
+  <tr>
+    <td><b>Marketing budget for $100M ARR</b></td>
+    <td align="center">~$50M / yr</td>
+    <td align="center">~$22M / yr</td>
+    <td align="center">~$14M / yr</td>
+  </tr>
+</table>
+
+```mermaid
+xychart-beta
+    title "Net LTV vs CAC per customer (USD)"
+    x-axis ["Worst", "Base", "Best"]
+    y-axis "USD" 0 --> 180
+    bar [124, 141.5, 164]
+    bar [74, 37.5, 26.5]
+```
+
+<sub>Taller bars are net LTV, shorter bars are CAC. The gap between them is the profit from each new customer.</sub>
+
+All inputs come from public benchmarks (RevenueCat, Adapty) unless marked **(assumption)**. The model follows a cohort of 100 new payers and all their payments over 36 months, after costs.
+
+### Costs per payment
+
+| | Monthly ($29.99) | Annual ($149.99) |
+|---|---|---|
+| Stripe (2.9% + $0.30 + 0.7% Billing) | 4.6% | 3.8% |
+| LLM and voice **(assumption)** | ~12% | ~12% |
+| **Net share we keep** | **83.4%** | **84.2%** |
+
+We sell on the web, so there's no App Store fee. Gross margin is about **84%**.
+
+### The three scenarios
+
+| | Worst | Base | Best |
+|---|---|---|---|
+| Monthly first renewal | 42% (lowest category) | 56% (Education) | 67% (Education, earlier data) |
+| Monthly, still paying at 12 months | 6.1% (AI apps) | 8% | 10% |
+| Monthly churn after month 2 | 16% / mo | 16% / mo | 16% / mo |
+| Payments per monthly customer | 3.6 | 4.45 | 5.2 |
+| Annual first renewal | 16.5% (24% adjusted for AI apps) | 24% (Education) | 31% |
+| Payments per annual customer | 1.25 | 1.36 | 1.47 |
+| New payers, monthly / annual | 50 / 50 | 50 / 50 | 38 / 62 |
+| Traffic, paid / organic | 100% / 0% | 50% / 50% | 30% / 70% |
+| **Net LTV** | **$124** | **$141.5** | **$164** |
+| **CAC** | **$74** | **$37.5** | **$26.5** |
+| **LTV / CAC** | **1.7x** | **3.8x** | **6.2x** |
+| LTV / CAC, first 12 months only | 1.4x | 3.0x | 4.6x |
+| ROMI | 67% | 277% | 520% |
+| Average net first payment ÷ CAC | 1.02x | 2.0x | 3.3x |
+| Payback, monthly-only customers | month 9 | month 2 | month 2 |
+| New payers a year for $100M ARR | ~677K | ~593K | ~511K |
+| Marketing budget a year | ~$50M | ~$22M | ~$14M |
+
+<details>
+<summary><b>How the formulas work</b></summary>
+
+<br>
+
+- **Payments per monthly customer:** 100 pay in month 1, the *first renewal %* pay in month 2, then the same share leaves every month until the *12-month retention %* remain at month 13. Total payments over 36 months ÷ 100.
+- **Payments per annual customer:** 100, then the *first renewal %*, then half of those renew again (year-2 renewals are 44–64%, per RevenueCat).
+- **Gross LTV** = payments × price. **Net LTV** = gross LTV × net share. **Blended** = weighted by the monthly/annual mix of new payers.
+- **CAC** = paid share × $65 (Adapty: global Meta median cost per paying user, Q3 2026) + organic share × ~$10 **(assumption: ~$3M/yr content team ÷ ~297K organic payers)**.
+- **LTV / CAC** = net LTV ÷ CAC. **ROMI** = (net LTV − CAC) ÷ CAC.
+- **New payers for $100M ARR** = $100M ÷ gross LTV. **Marketing budget** = new payers × CAC.
+
+</details>
+
+<details>
+<summary><b>The worst case, step by step</b></summary>
+
+<br>
+
+Everything goes wrong at once: the lowest renewal rates, AI-app churn, no organic traffic at all, and CAC above the Meta median.
+
+1. **Monthly customer:** 100 pay, 42 pay again in month 2, then ~16% leave each month, leaving 6 at month 13. That's **3.6 payments** × $29.99 = $108 gross, or **$90 net**.
+2. **Annual customer:** 100 pay, 16.5 renew, ~8 renew again. That's **1.25 payments** × $149.99 = $187 gross, or **$157.5 net**.
+3. **Blended (50/50):** (90 + 157.5) ÷ 2 = **$124 net LTV**.
+4. **CAC:** 100% paid traffic at **$74**, between the Meta median ($64.93) and the highest benchmark cost ($82.23).
+5. **LTV / CAC** = 124 ÷ 74 = **1.7x**. Even at the highest benchmark CAC of $82.23 it's still **1.5x**. It only falls to 1.0x at a CAC of **$124**, nearly twice the Meta median.
+6. **The first payment covers acquisition:** the average net first payment is $75.7 (half pay $25 monthly, half pay $126 annual), above the $74 CAC. Across a cohort, acquisition pays for itself even if nobody renews.
+7. **At $100M ARR:** ~677K new payers a year × $74 ≈ **$50M** of marketing against ~**$84M** of gross profit. **The business still makes money.**
+
+</details>
+
+### Better marketing lifts every scenario
+
+CAC depends on the paid/organic mix: **CAC = $65 × paid share + $10 × organic share**.
+
+| Organic share | CAC | LTV / CAC (base retention) | LTV / CAC (worst retention) |
+|---|---|---|---|
+| 0% | $65 | 2.2x | 1.9x |
+| 30% | $48.5 | 2.9x | 2.6x |
+| 50% | $37.5 | 3.8x | **3.3x** |
+| 60% | $32 | 4.4x | 3.9x |
+| 70% | $26.5 | 5.3x | 4.7x |
+
+**Bottom line:**
+- LTV beats CAC even in the worst case.
+- At 50% organic traffic, worst-case retention still gives **3.3x**, close to the base case.
+- More organic reach, cheaper paid acquisition and more annual subscribers all push LTV/CAC higher, so we track organic share from day one.
 
 ## Tech stack
 
