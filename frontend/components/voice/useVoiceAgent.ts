@@ -13,6 +13,14 @@ const KEEPALIVE_MS = 8000;
 // 32 kbps Opus keeps a 10-minute answer under Vercel's 4.5 MB request limit.
 const RECORDING_BITRATE = 32000;
 const CELEBRATE_MS = 2500;
+/**
+ * How long the user must be quiet before the coach's reply is allowed to play. Deepgram's
+ * nova-3 turn detection replies after very short pauses, so replies that arrive sooner are
+ * held; if the user keeps talking, Deepgram's barge-in discards the held reply.
+ */
+const PAUSE_TOLERANCE_MS = 1500;
+/** Never hold a reply longer than this, so background chatter can't mute the coach. */
+const MAX_HOLD_MS = 8000;
 const RECONNECT_GREETING = "Sorry, we lost the line for a second. Go ahead and pick up where you left off.";
 
 const CAPTURE_WORKLET = `
@@ -138,20 +146,36 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
   const doneSpeakingRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const celebrateRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reconnectRef = useRef<(token: string) => void>(() => {});
+  const lastUserSpeechRef = useRef(0);
+  const replyLiveRef = useRef(false);
+  const heldRef = useRef<{ chunks: ArrayBuffer[]; caption: string | null; audioDone: boolean; since: number }>({
+    chunks: [],
+    caption: null,
+    audioDone: false,
+    since: 0,
+  });
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const releaseRef = useRef<() => void>(() => {});
 
   const changeMood = useCallback((next: MascotState) => {
     moodRef.current = next;
     if (!pausedRef.current) setMood(next);
   }, []);
 
+  const clearHeld = useCallback(() => {
+    clearTimeout(holdTimerRef.current);
+    heldRef.current = { chunks: [], caption: null, audioDone: false, since: 0 };
+  }, []);
+
   const stopPlayback = useCallback(() => {
+    clearHeld();
     const s = session.current;
     if (!s) return;
     s.sources.forEach((source) => source.stop());
     s.sources = [];
     s.playhead = 0;
     clearTimeout(doneSpeakingRef.current);
-  }, []);
+  }, [clearHeld]);
 
   const playChunk = useCallback((data: ArrayBuffer) => {
     const s = session.current;
@@ -173,6 +197,61 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
     };
   }, [changeMood]);
 
+  const finishSpeakingAfterPlayback = useCallback(() => {
+    const s = session.current;
+    const remaining = s ? Math.max(0, s.playhead - s.output.currentTime) : 0;
+    clearTimeout(doneSpeakingRef.current);
+    doneSpeakingRef.current = setTimeout(() => changeMood("listening"), remaining * 1000);
+  }, [changeMood]);
+
+  /** Plays the held reply once the user has been quiet long enough. */
+  const releaseHeld = useCallback(() => {
+    clearTimeout(holdTimerRef.current);
+    const held = heldRef.current;
+    const wait = Math.min(lastUserSpeechRef.current + PAUSE_TOLERANCE_MS, held.since + MAX_HOLD_MS) - Date.now();
+    if (wait > 0) {
+      holdTimerRef.current = setTimeout(() => releaseRef.current(), wait);
+      return;
+    }
+    heldRef.current = { chunks: [], caption: null, audioDone: false, since: 0 };
+    replyLiveRef.current = true;
+    if (held.caption) setCaption({ role: "coach", text: held.caption });
+    held.chunks.forEach(playChunk);
+    if (held.audioDone) finishSpeakingAfterPlayback();
+  }, [playChunk, finishSpeakingAfterPlayback]);
+
+  useEffect(() => {
+    releaseRef.current = releaseHeld;
+  }, [releaseHeld]);
+
+  /** True when the coach's reply should wait because the user only just stopped talking. */
+  const shouldHold = useCallback(() => {
+    if (replyLiveRef.current) return false;
+    const held = heldRef.current;
+    if (held.chunks.length > 0 || held.caption) return true;
+    if (Date.now() - lastUserSpeechRef.current >= PAUSE_TOLERANCE_MS) {
+      replyLiveRef.current = true;
+      return false;
+    }
+    held.since = Date.now();
+    return true;
+  }, []);
+
+  const receiveAudio = useCallback(
+    (data: ArrayBuffer) => {
+      if (!session.current || pausedRef.current) return;
+      if (!shouldHold()) return playChunk(data);
+      heldRef.current.chunks.push(data);
+      releaseHeld();
+    },
+    [shouldHold, playChunk, releaseHeld],
+  );
+
+  const userIsSpeaking = useCallback(() => {
+    lastUserSpeechRef.current = Date.now();
+    replyLiveRef.current = false;
+  }, []);
+
   const handleAgentEvent = useCallback(
     (event: AgentEvent) => {
       const s = session.current;
@@ -183,6 +262,7 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
           break;
         case "UserStartedSpeaking":
           stopPlayback();
+          userIsSpeaking();
           changeMood("listening");
           break;
         case "AgentThinking":
@@ -190,17 +270,21 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
           break;
         case "AgentStartedSpeaking":
           clearTimeout(doneSpeakingRef.current);
-          changeMood("talking");
+          if (replyLiveRef.current) changeMood("talking");
           break;
-        case "AgentAudioDone": {
-          const remaining = s ? Math.max(0, s.playhead - s.output.currentTime) : 0;
-          doneSpeakingRef.current = setTimeout(() => changeMood("listening"), remaining * 1000);
+        case "AgentAudioDone":
+          if (heldRef.current.chunks.length > 0) heldRef.current.audioDone = true;
+          else finishSpeakingAfterPlayback();
           break;
-        }
         case "ConversationText":
           if (!event.content) break;
           setLines((current) => [...current, { role: event.role === "user" ? "user" : "coach", text: event.content! }]);
-          if (event.role === "assistant") setCaption({ role: "coach", text: event.content });
+          // The user's finished turn: their reply comes next. Timing comes from their words, not this event.
+          if (event.role === "user") replyLiveRef.current = false;
+          else if (shouldHold()) {
+            heldRef.current.caption = event.content;
+            releaseHeld();
+          } else setCaption({ role: "coach", text: event.content });
           break;
         case "FunctionCallRequest":
           for (const call of event.functions ?? []) {
@@ -221,13 +305,15 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
           break;
       }
     },
-    [changeMood, stopPlayback],
+    [changeMood, stopPlayback, userIsSpeaking, finishSpeakingAfterPlayback, shouldHold, releaseHeld],
   );
 
   const handleListenEvent = useCallback((event: ListenEvent) => {
     if (event.type !== "Results") return;
     const transcript = event.channel?.alternatives[0]?.transcript.trim() ?? "";
     if (!transcript) return;
+    // Only during the user's turn, so leaked echo of the coach can't stall its own reply.
+    if (!replyLiveRef.current) lastUserSpeechRef.current = Date.now();
     if (event.is_final) {
       setUserText((current) => `${current} ${transcript}`.trim());
       setSpeakingSec((current) => current + (event.duration ?? 0));
@@ -249,7 +335,7 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
       agent.onopen = () => agent.send(JSON.stringify(agentSettingsMessage(settings, labels, sampleRate, greeting, coach)));
       agent.onmessage = (message) => {
         if (typeof message.data === "string") handleAgentEvent(JSON.parse(message.data));
-        else playChunk(message.data);
+        else receiveAudio(message.data);
       };
       agent.onclose = () => {
         if (s.ending || s.agent !== agent) return;
@@ -280,7 +366,7 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
       s.agent = agent;
       s.listen = listen;
     },
-    [settings, labels, coach, practice, handleAgentEvent, handleListenEvent, playChunk, stopPlayback],
+    [settings, labels, coach, practice, handleAgentEvent, handleListenEvent, receiveAudio, stopPlayback],
   );
 
   useEffect(() => {
@@ -301,6 +387,7 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
     clearInterval(keepAliveRef.current);
     clearTimeout(doneSpeakingRef.current);
     clearTimeout(celebrateRef.current);
+    clearTimeout(holdTimerRef.current);
     s.agent?.close();
     s.listen?.close();
     s.stream.getTracks().forEach((track) => track.stop());
