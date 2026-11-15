@@ -22,8 +22,8 @@ export default async function LessonPage({ params }: Props) {
   if (!course || index === -1 || course.steps[index].kind !== "video") notFound();
 
   if (stepStatuses(course, progress)[index] === "locked") redirect(`/courses/${course.id}`);
-  if (needsSubscription(user.plan, course.steps, index)) {
+  if (needsSubscription(user.plan, course, index)) {
     return <ProGate title={course.steps[index].title} backHref={`/courses/${course.id}`} />;
   }
-  return <LessonView course={course} index={index} />;
+  return <LessonView course={course} index={index} plan={user.plan} />;
 }

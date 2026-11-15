@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Check, ChevronRight, Clock, Flag, Gauge, Lock, Mic, SkipForward, SquarePlay } from "lucide-react";
 import { Fragment } from "react";
 import type { Plan, Step } from "backend/db/schema";
-import { freeStepCount, isPaid } from "backend/plans";
+import { FREE_PRACTICE_COURSE, firstProStep, needsSubscription } from "backend/plans";
 import {
   courseDuration,
   courseSummary,
@@ -201,12 +201,13 @@ function PathCard({
   );
 }
 
-function ProBanner() {
+function ProBanner({ practicesFree }: { practicesFree: boolean }) {
   return (
     <li className="mb-3 ml-14 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-accent bg-tint px-5 py-4">
       <div>
         <p className="text-[13px] font-semibold text-accent-ink">yapper Pro</p>
-        <p className="text-[15px] font-semibold">Chapter 1 is free. Unlock the rest of the course.</p>
+        <p className="text-[15px] font-semibold">{practicesFree ? "Chapter 1 is free." : "Lesson 1 is free."} Unlock {practicesFree ? "the rest of the course" : "every practice and lesson"}.
+        </p>
       </div>
       <Link href="/billing" className="btn btn-primary btn-sm">
         See plans
@@ -216,8 +217,7 @@ function ProBanner() {
 }
 
 function CoursePath({ course, progress, plan }: { course: Course; progress: Progress; plan: Plan }) {
-  const freeCount = freeStepCount(course.steps);
-  const proLocked = !isPaid(plan);
+  const proStart = firstProStep(plan, course);
   const { statuses } = courseSummary(course, progress);
   const blockerIndex = statuses.findIndex(
     (status, i) => (status === "current" || status === "available") && !isOptional(course.steps[i]),
@@ -230,10 +230,10 @@ function CoursePath({ course, progress, plan }: { course: Course; progress: Prog
       {course.steps.map((step, index) => {
         const status = statuses[index];
         const isLast = index === course.steps.length - 1;
-        const pro = proLocked && index >= freeCount;
+        const pro = needsSubscription(plan, course, index);
         return (
           <Fragment key={step.id}>
-            {proLocked && index === freeCount && <ProBanner />}
+            {index === proStart && <ProBanner practicesFree={course.id === FREE_PRACTICE_COURSE} />}
             <li className="relative grid grid-cols-[40px_minmax(0,1fr)] gap-4 pb-3">
               <div className="relative flex justify-center pt-4">
                 <PathNode step={step} status={status} />
@@ -313,7 +313,7 @@ export function CourseView({ course, progress, latestNote, plan }: CourseViewPro
         </span>
       </nav>
 
-      <header className="mt-5 flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+      <header className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-[600px]">
           <h1 className="page-title">{course.title}</h1>
           <p className="mt-3 text-[16px] leading-relaxed text-muted">{course.description}</p>
@@ -325,11 +325,11 @@ export function CourseView({ course, progress, latestNote, plan }: CourseViewPro
               <Mic size={15} aria-hidden /> {practiceCount(course)} voice practices
             </li>
             <li className="flex items-center gap-1.5">
-              <Clock size={15} aria-hidden /> About {courseDuration(course)}
+              <Clock size={15} aria-hidden /> {courseDuration(course)}
             </li>
           </ul>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-4">
           <ProgressRing value={summary.percent} size={88} stroke={8} label={`${summary.percent}% complete`}>
             <span className="text-[19px] font-bold">{summary.percent}%</span>
           </ProgressRing>
@@ -344,7 +344,7 @@ export function CourseView({ course, progress, latestNote, plan }: CourseViewPro
         </div>
       </header>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_288px]">
+      <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_288px]">
         <CoursePath course={course} progress={progress} plan={plan} />
         <UnlockLegend note={latestNote} />
       </div>

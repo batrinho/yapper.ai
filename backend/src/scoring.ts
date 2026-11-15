@@ -182,7 +182,21 @@ const PART_CUES: Record<string, string[]> = {
   open: ["imagine", "what if", "raise your hand", "picture", "here's", "today"],
   point: ["my point", "the idea", "i believe", "the key", "what matters", "the one thing"],
   proof: ["for example", "for instance", "percent", "data", "study", "when i"],
-  close: ["so next", "my ask", "remember", "to wrap up", "try this", "thank you", "in short"],
+  close: ["so next", "my ask", "remember", "to wrap up", "try this", "thank you", "in short", "let's", "does that work", "can we agree"],
+  present: ["i'm a", "i am a", "i work", "currently", "right now", "these days", "my role"],
+  past: ["before that", "started", "i used to", "previously", "background", "studied", "years ago"],
+  future: ["next", "looking for", "excited", "i want to", "hoping", "goal", "going forward"],
+  headline: ["bottom line", "in short", "the headline", "on track", "behind", "ahead", "overall"],
+  progress: ["finished", "completed", "shipped", "done", "progress", "this week", "so far"],
+  blockers: ["blocked", "waiting on", "risk", "issue", "problem", "delay", "need help", "challenge"],
+  "next steps": ["next", "plan to", "will", "by friday", "tomorrow", "going to", "next week"],
+  acknowledge: ["i hear", "i understand", "fair point", "good question", "you're right", "i see why", "that's a valid"],
+  position: ["i still think", "i believe", "i recommend", "my view", "i chose", "the reason", "that's why"],
+  evidence: ["data", "for example", "percent", "users", "tested", "results", "numbers", "we saw"],
+  "next step": ["next step", "let's", "i suggest", "how about", "we could", "i'll follow up", "propose"],
+  value: ["i delivered", "i led", "i saved", "i grew", "my results", "i've taken on", "impact"],
+  market: ["market", "research", "industry", "similar roles", "data shows", "benchmark", "glassdoor", "range"],
+  ask: ["i'm asking", "i'd like", "i would like", "i'm looking for", "can we", "i want", "my ask"],
 };
 
 const FILLER_PATTERN = /\b(um+|uh+|hmm+|mm+|mhmm|uh-huh|basically|actually|you know|sort of|kind of)\b,?\s*|,\s*like,\s*/gi;

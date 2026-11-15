@@ -29,7 +29,7 @@ export default async function PracticePage({ params }: Props) {
   const index = course?.steps.findIndex((step) => step.id === stepId) ?? -1;
   if (!course || index === -1 || course.steps[index].kind === "video") notFound();
   if (stepStatuses(course, progress)[index] === "locked") redirect(`/courses/${course.id}`);
-  if (needsSubscription(user.plan, course.steps, index)) {
+  if (needsSubscription(user.plan, course, index)) {
     return <ProGate title={course.steps[index].title} backHref={`/courses/${course.id}`} />;
   }
 

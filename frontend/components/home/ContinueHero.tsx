@@ -52,12 +52,12 @@ function heroContent(courses: CourseWithSteps[], progress: ProgressMap, plan: Pl
     };
   }
 
-  if (needsSubscription(plan, course.steps, index)) {
+  if (needsSubscription(plan, course, index)) {
     return {
       ...base,
       chip: "Pro",
       title: step.title,
-      copy: "You finished the free chapter. Unlock yapper Pro to keep going with the rest of the course.",
+      copy: "This part of the course is in yapper Pro. Pick a plan to keep practicing with your coach.",
       primary: { label: "Unlock with Pro", href: "/billing" },
     };
   }

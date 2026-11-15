@@ -60,7 +60,7 @@ async function resolveAttempt(user: User, params: URLSearchParams): Promise<Atte
   const index = course?.steps.findIndex((step) => step.id === params.get("step")) ?? -1;
   if (!course || index === -1) return Response.json({ error: "Unknown practice." }, { status: 404 });
   if (course.steps[index].kind === "placement") return "placement";
-  if (needsSubscription(user.plan, course.steps, index)) {
+  if (needsSubscription(user.plan, course, index)) {
     return paywall("This practice is part of yapper Pro. Pick a plan to unlock it.");
   }
   if (freePracticesLeft(user.plan, await getAttemptsUsed(user.id)) === 0) {

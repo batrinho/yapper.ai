@@ -32,6 +32,7 @@ export const courses = pgTable("courses", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   structureLabels: jsonb("structure_labels").$type<string[]>().notNull(),
+  durationLabel: text("duration_label"),
   sortOrder: integer("sort_order").notNull(),
 });
 

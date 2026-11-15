@@ -30,7 +30,7 @@ function CurrentPlan({ plan, renewsAt, freeLeft }: Props) {
         </div>
         <ProgressBar value={(used / FREE_PRACTICES) * 100} className="mt-2" />
         <p className="mt-3 text-[14px] text-muted">
-          Chapter 1 of every course is free, with {FREE_PRACTICES} voice practices.{" "}
+          Lesson 1 of every course is free, plus {FREE_PRACTICES} voice practices in Introduce Yourself &amp; Your Work.{" "}
           {freeLeft ? `${freeLeft} free practice${freeLeft === 1 ? "" : "s"} left.` : "You've used them all. Pick a plan below to unlock everything."}
         </p>
       </section>

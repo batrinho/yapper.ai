@@ -1,8 +1,27 @@
 # yapper.ai
 
-An AI speaking coach for storytelling, public speaking and behavioral interviews. You watch a short lesson, practice out loud with a voice coach, and get a scored report. After every practice, your skill profile updates across five areas: Fluency, Pronunciation & Articulation, Grammar & Syntax, Vocabulary and Cohesion.
+An AI speaking coach for the moments that matter at work: introducing yourself, giving updates, defending your work, telling stories and negotiating. You watch a short lesson, practice out loud with a voice coach, and get a scored report. After every practice, your skill profile updates across five areas: Fluency, Pronunciation & Articulation, Grammar & Syntax, Vocabulary and Cohesion.
 
 Live demo: [yapper-ai-lilac.vercel.app](https://yapper-ai-lilac.vercel.app)
+
+## Courses
+
+The learning path has five courses. Each one starts with a level check, then 10 video lessons with voice practices between them, and ends with a final practice.
+
+| # | Course | What you practice |
+| --- | --- | --- |
+| 1 | Introduce Yourself & Your Work | 30-second intro, "So what do you do?", tell me about yourself, elevator pitch |
+| 2 | Speak Up: Status Updates & Public Speaking | Headline-first updates, delivering a delay, opening and presenting a talk |
+| 3 | Hold Your Ground: Defend Your Work Under Pushback | Answering challenges, hostile questions, defending a budget, unfair feedback |
+| 4 | Make It Stick: Storytelling with Impact | Origin story, turning points, customer stories, pitching with a story |
+| 5 | Ask for What You're Worth: Negotiation | Stating your value, asking for a raise, handling a no, countering an offer |
+
+**Free vs. Pro.**
+- Without a plan, lesson 1 of every course and every level check are free.
+- Practices are free only in course 1, for 3 attempts in all.
+- Every other lesson and practice needs a Monthly or Annual plan.
+
+**About the course lengths.** The lessons are public YouTube videos, each under 20 minutes, that we picked for this Business Cup demo because we don't have our own course material yet. The "10+ hours" to "20+ hours" lengths shown on each course are deliberate placeholders, not the sum of these videos. They reflect what we're aiming for: a production version would replace the YouTube lessons with 10+ hours of original material per course.
 
 ## Tech stack
 

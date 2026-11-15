@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronRight, CircleCheck, Lock, Mic } from "lucide-react";
-import type { Step } from "backend/db/schema";
+import type { Plan, Step } from "backend/db/schema";
 import { lessonNumber, stepHref, stepName, type CourseWithSteps } from "backend/course-state";
 import { criteriaLabels } from "backend/criteria";
+import { needsSubscription } from "backend/plans";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import { Avatar, initials, NumberTile, Page, PracticeBadge } from "@/components/ui";
 import { VideoPlayer } from "@/components/course/VideoPlayer";
@@ -20,7 +21,9 @@ function updateStep(stepId: string, status: "done" | "skipped") {
   });
 }
 
-function PracticeCta({ course, practice, afterIndex, onLeave }: { course: CourseWithSteps; practice: Step; afterIndex: number; onLeave: Leave }) {
+type PracticeCtaProps = { course: CourseWithSteps; practice: Step; afterIndex: number; pro: boolean; onLeave: Leave };
+
+function PracticeCta({ course, practice, afterIndex, pro, onLeave }: PracticeCtaProps) {
   const after = course.steps[afterIndex];
   const footnote = !practice.required
     ? "Extra reps. Skipping won't lock anything."
@@ -50,9 +53,13 @@ function PracticeCta({ course, practice, afterIndex, onLeave }: { course: Course
           ))}
         </ul>
       </div>
-      <button type="button" onClick={() => onLeave(stepHref(course.id, practice))} className="btn btn-primary mt-5 h-[52px] w-full text-[17px]">
-        <Mic size={20} aria-hidden />
-        Practice with coach
+      <button
+        type="button"
+        onClick={() => onLeave(pro ? "/billing" : stepHref(course.id, practice))}
+        className="btn btn-primary mt-5 h-[52px] w-full text-[17px]"
+      >
+        {pro ? <Lock size={18} aria-hidden /> : <Mic size={20} aria-hidden />}
+        {pro ? "Unlock with Pro" : "Practice with coach"}
       </button>
       {!practice.required && (
         <button
@@ -92,7 +99,7 @@ function NextLessonCta({ course, nextIndex, onLeave }: { course: CourseWithSteps
   );
 }
 
-export function LessonView({ course, index }: { course: CourseWithSteps; index: number }) {
+export function LessonView({ course, index, plan }: { course: CourseWithSteps; index: number; plan: Plan }) {
   const router = useRouter();
   const step = course.steps[index];
   const next = course.steps[index + 1];
@@ -154,7 +161,7 @@ export function LessonView({ course, index }: { course: CourseWithSteps; index: 
 
         <div className="lg:sticky lg:top-8 lg:self-start">
           {next && next.kind !== "video" ? (
-            <PracticeCta course={course} practice={next} afterIndex={index + 2} onLeave={leave} />
+            <PracticeCta course={course} practice={next} afterIndex={index + 2} pro={needsSubscription(plan, course, index + 1)} onLeave={leave} />
           ) : (
             <NextLessonCta course={course} nextIndex={index + 1} onLeave={leave} />
           )}

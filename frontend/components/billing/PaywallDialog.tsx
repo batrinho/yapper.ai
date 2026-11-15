@@ -9,7 +9,7 @@ import { PlanPicker } from "@/components/billing/PlanPicker";
 import { usePlanCheckout } from "@/components/billing/usePlanCheckout";
 
 export const PLAN_FEATURES = [
-  "Every lesson and practice in all 3 courses",
+  "Every lesson and practice in all 5 courses",
   "Unlimited voice practice with your coach",
   "Full reports with AI feedback and a stronger version",
   "Your coach remembers what to work on",
@@ -22,9 +22,9 @@ const COPY = {
     sub: "Pick a plan to keep practicing out loud with your coach.",
   },
   chapter: {
-    eyebrow: "Chapter 1 is free",
+    eyebrow: "Lesson 1 is free",
     title: "Unlock the rest of the course",
-    sub: "Every lesson and practice after chapter 1 is part of yapper Pro.",
+    sub: "Every lesson after the first, and every practice outside the free course, is part of yapper Pro.",
   },
 };
 

@@ -49,6 +49,7 @@ export const lessonCount = (course: CourseWithSteps) => course.steps.filter((s) 
 export const practiceCount = (course: CourseWithSteps) => course.steps.filter(isPractice).length;
 
 export function courseDuration(course: CourseWithSteps): string {
+  if (course.durationLabel) return course.durationLabel;
   const minutes = course.steps.reduce((sum, step) => sum + step.durationMin, 0);
   const hours = Math.floor(minutes / 60);
   return hours ? `${hours} h ${minutes % 60} min` : `${minutes} min`;

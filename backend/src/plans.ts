@@ -36,6 +36,10 @@ export function freePracticesLeft(plan: Plan, attemptsUsed: number): number | nu
 export const formatPrice = (amount: number) => `$${amount.toFixed(2)}`;
 
 type StepLike = { kind: string };
+type CourseLike = { id: string; steps: StepLike[] };
+
+/** The only course whose practices free users can try, up to FREE_PRACTICES attempts in all. */
+export const FREE_PRACTICE_COURSE = "introduce-yourself";
 
 export const isPaid = (plan: Plan) => plan !== "free";
 
@@ -45,6 +49,18 @@ export function freeStepCount(steps: StepLike[]): number {
   return secondLesson === -1 ? steps.length : secondLesson;
 }
 
-export function needsSubscription(plan: Plan, steps: StepLike[], index: number): boolean {
-  return !isPaid(plan) && index >= freeStepCount(steps);
+/**
+ * Free users get lesson 1 of every course and the level checks. Practices are free only in
+ * chapter 1 of the free-practice course; everything else needs a plan.
+ */
+export function needsSubscription(plan: Plan, course: CourseLike, index: number): boolean {
+  if (isPaid(plan)) return false;
+  if (index >= freeStepCount(course.steps)) return true;
+  const kind = course.steps[index]?.kind;
+  return (kind === "practice" || kind === "final") && course.id !== FREE_PRACTICE_COURSE;
+}
+
+/** Index of the first step a free user can't open, or -1 if the whole course is free. */
+export function firstProStep(plan: Plan, course: CourseLike): number {
+  return course.steps.findIndex((_, index) => needsSubscription(plan, course, index));
 }
