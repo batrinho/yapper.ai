@@ -21,6 +21,8 @@ const CELEBRATE_MS = 2500;
 const PAUSE_TOLERANCE_MS = 1500;
 /** Never hold a reply longer than this, so background chatter can't mute the coach. */
 const MAX_HOLD_MS = 8000;
+/** Show a coach caption anyway if its audio hasn't arrived by then. */
+const CAPTION_FALLBACK_MS = 1500;
 const RECONNECT_GREETING = "Sorry, we lost the line for a second. Go ahead and pick up where you left off.";
 
 const CAPTURE_WORKLET = `
@@ -45,7 +47,8 @@ registerProcessor("capture", Capture);`;
 export type Phase = "permission" | "connecting" | "live";
 export type VoiceErrorKind = "mic-denied" | "token" | "lost" | "paywall";
 export type Line = { role: "coach" | "user"; text: string };
-export type Caption = { role: "coach" | "user"; text: string } | null;
+/** Coach captions carry when their audio starts and, once known, how long it lasts, so words reveal in step with the voice. */
+export type Caption = { role: "coach" | "user"; text: string; startsAt?: number; durationMs?: number | null } | null;
 
 type Session = {
   stream: MediaStream;
@@ -156,6 +159,11 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
   });
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const releaseRef = useRef<() => void>(() => {});
+  const pendingCoachTextRef = useRef<string | null>(null);
+  const spokenCaptionRef = useRef<{ text: string; start: number } | null>(null);
+  const captionDurationsRef = useRef(new Map<string, number>());
+  const captionTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const captionFallbackRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const changeMood = useCallback((next: MascotState) => {
     moodRef.current = next;
@@ -167,8 +175,43 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
     heldRef.current = { chunks: [], caption: null, audioDone: false, since: 0 };
   }, []);
 
+  const showCoachCaption = useCallback((text: string, delayMs: number) => {
+    clearTimeout(captionTimerRef.current);
+    captionTimerRef.current = setTimeout(() => {
+      setCaption({ role: "coach", text, startsAt: performance.now(), durationMs: captionDurationsRef.current.get(text) ?? null });
+    }, delayMs);
+  }, []);
+
+  /** Records how long the spoken caption's audio lasted, ending at `end` on the audio clock. */
+  const closeCaption = useCallback((end: number) => {
+    const spoken = spokenCaptionRef.current;
+    if (!spoken) return;
+    spokenCaptionRef.current = null;
+    const durationMs = Math.max(0, (end - spoken.start) * 1000);
+    captionDurationsRef.current.set(spoken.text, durationMs);
+    setCaption((current) => (current?.role === "coach" && current.text === spoken.text ? { ...current, durationMs } : current));
+  }, []);
+
+  /** The caption waits for its first audio chunk, so it can't run ahead of queued speech. */
+  const queueCoachCaption = useCallback(
+    (text: string) => {
+      pendingCoachTextRef.current = text;
+      clearTimeout(captionFallbackRef.current);
+      captionFallbackRef.current = setTimeout(() => {
+        if (pendingCoachTextRef.current !== text) return;
+        pendingCoachTextRef.current = null;
+        showCoachCaption(text, 0);
+      }, CAPTION_FALLBACK_MS);
+    },
+    [showCoachCaption],
+  );
+
   const stopPlayback = useCallback(() => {
     clearHeld();
+    clearTimeout(captionTimerRef.current);
+    clearTimeout(captionFallbackRef.current);
+    pendingCoachTextRef.current = null;
+    spokenCaptionRef.current = null;
     const s = session.current;
     if (!s) return;
     s.sources.forEach((source) => source.stop());
@@ -189,20 +232,29 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
     source.buffer = buffer;
     source.connect(s.agentAnalyser);
     const startAt = Math.max(s.playhead, s.output.currentTime);
+    const text = pendingCoachTextRef.current;
+    if (text) {
+      pendingCoachTextRef.current = null;
+      clearTimeout(captionFallbackRef.current);
+      closeCaption(startAt);
+      spokenCaptionRef.current = { text, start: startAt };
+      showCoachCaption(text, Math.max(0, (startAt - s.output.currentTime) * 1000));
+    }
     source.start(startAt);
     s.playhead = startAt + buffer.duration;
     s.sources.push(source);
     source.onended = () => {
       s.sources = s.sources.filter((item) => item !== source);
     };
-  }, [changeMood]);
+  }, [changeMood, closeCaption, showCoachCaption]);
 
   const finishSpeakingAfterPlayback = useCallback(() => {
     const s = session.current;
+    if (s) closeCaption(s.playhead);
     const remaining = s ? Math.max(0, s.playhead - s.output.currentTime) : 0;
     clearTimeout(doneSpeakingRef.current);
     doneSpeakingRef.current = setTimeout(() => changeMood("listening"), remaining * 1000);
-  }, [changeMood]);
+  }, [changeMood, closeCaption]);
 
   /** Plays the held reply once the user has been quiet long enough. */
   const releaseHeld = useCallback(() => {
@@ -215,10 +267,10 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
     }
     heldRef.current = { chunks: [], caption: null, audioDone: false, since: 0 };
     replyLiveRef.current = true;
-    if (held.caption) setCaption({ role: "coach", text: held.caption });
+    if (held.caption) queueCoachCaption(held.caption);
     held.chunks.forEach(playChunk);
     if (held.audioDone) finishSpeakingAfterPlayback();
-  }, [playChunk, finishSpeakingAfterPlayback]);
+  }, [playChunk, finishSpeakingAfterPlayback, queueCoachCaption]);
 
   useEffect(() => {
     releaseRef.current = releaseHeld;
@@ -284,7 +336,7 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
           else if (shouldHold()) {
             heldRef.current.caption = event.content;
             releaseHeld();
-          } else setCaption({ role: "coach", text: event.content });
+          } else queueCoachCaption(event.content);
           break;
         case "FunctionCallRequest":
           for (const call of event.functions ?? []) {
@@ -305,7 +357,7 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
           break;
       }
     },
-    [changeMood, stopPlayback, userIsSpeaking, finishSpeakingAfterPlayback, shouldHold, releaseHeld],
+    [changeMood, stopPlayback, userIsSpeaking, finishSpeakingAfterPlayback, shouldHold, releaseHeld, queueCoachCaption],
   );
 
   const handleListenEvent = useCallback((event: ListenEvent) => {
@@ -388,6 +440,8 @@ export function useVoiceAgent({ settings, labels, coach, practice }: Options) {
     clearTimeout(doneSpeakingRef.current);
     clearTimeout(celebrateRef.current);
     clearTimeout(holdTimerRef.current);
+    clearTimeout(captionTimerRef.current);
+    clearTimeout(captionFallbackRef.current);
     s.agent?.close();
     s.listen?.close();
     s.stream.getTracks().forEach((track) => track.stop());

@@ -90,7 +90,7 @@ export function TrialChat({ question, settings }: { question: string; settings: 
           {voice.phase === "connecting" && <ConnectingSkeleton />}
           {live && (
             <>
-              <Captions caption={voice.caption} coachTalking={voice.mood === "talking"} />
+              <Captions caption={voice.caption} />
               <Waveform mood={voice.mood} levelRef={voice.levelRef} />
               <Controls mood={voice.mood} paused={voice.paused} busy={leaving} onPause={voice.pause} onResume={voice.resume} onEnd={finish} />
             </>

@@ -201,7 +201,7 @@ export function VoiceChat({ course, step, settings, attempt, freeLeft, lessonLab
 
           {live && (
             <>
-              <Captions caption={voice.caption} coachTalking={mood === "talking"} />
+              <Captions caption={voice.caption} />
               <Waveform mood={mood} levelRef={voice.levelRef} />
               <FeedbackChips
                 labels={labels}

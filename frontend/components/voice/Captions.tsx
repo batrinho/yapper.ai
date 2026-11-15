@@ -3,24 +3,31 @@
 import { useEffect, useState } from "react";
 import type { Caption } from "@/components/voice/useVoiceAgent";
 
-const WORD_MS = 300;
+/** Pace used until the caption's audio length is known (Aura voices speak about 160 words a minute). */
+const DEFAULT_WORD_MS = 375;
+const TICK_MS = 80;
 
-function useRevealedWords(text: string, animate: boolean): string {
-  const words = text.split(" ");
-  const [shown, setShown] = useState({ text, count: animate ? 1 : words.length });
-  const count = shown.text === text ? shown.count : animate ? 1 : words.length;
+/** Reveals a coach caption word by word, timed to when its audio started and how long it lasts. */
+function useRevealedText(caption: Caption): string {
+  const startsAt = caption?.role === "coach" ? caption.startsAt : undefined;
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    if (!animate || count >= words.length) return;
-    const id = setTimeout(() => setShown({ text, count: count + 1 }), WORD_MS);
-    return () => clearTimeout(id);
-  }, [animate, count, text, words.length]);
+    if (startsAt === undefined) return;
+    const id = setInterval(() => setNow(performance.now()), TICK_MS);
+    return () => clearInterval(id);
+  }, [startsAt]);
 
-  return words.slice(0, count).join(" ");
+  if (!caption) return "";
+  if (startsAt === undefined) return caption.text;
+  const words = caption.text.split(" ");
+  const wordMs = caption.durationMs ? caption.durationMs / words.length : DEFAULT_WORD_MS;
+  const count = Math.floor((now - startsAt) / wordMs) + 1;
+  return words.slice(0, Math.min(words.length, Math.max(1, count))).join(" ");
 }
 
-export function Captions({ caption, coachTalking }: { caption: Caption; coachTalking: boolean }) {
-  const text = useRevealedWords(caption?.text ?? "", caption?.role === "coach" && coachTalking);
+export function Captions({ caption }: { caption: Caption }) {
+  const text = useRevealedText(caption);
   if (!caption) return <div className="h-[72px]" aria-hidden />;
 
   return (
